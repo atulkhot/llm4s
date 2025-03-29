@@ -2,6 +2,7 @@ package org.llm4s.shared
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.llm4s.shared._
 
 class WorkspaceAgentInterfaceTest extends AnyFlatSpec with Matchers {
 
@@ -48,6 +49,44 @@ class WorkspaceAgentInterfaceTest extends AnyFlatSpec with Matchers {
           isOutputTruncated = false,
           durationMs = 100
         )
+
+      case cmd: ExploreFilesCommand =>
+        ExploreFilesResponse(
+          commandId = cmd.commandId,
+          files = List(
+            FileEntry(path = "subdir/nested.txt", isDirectory = false),
+            FileEntry(path = "test.txt", isDirectory = false)
+          ),
+          isTruncated = false,
+          totalFound = 2
+        )
+
+      case cmd: ModifyFileCommand =>
+        ModifyFileResponse(
+          commandId = cmd.commandId,
+          success = true,
+          path = cmd.path
+        )
+
+      case cmd: SearchFilesCommand =>
+        SearchFilesResponse(
+          commandId = cmd.commandId,
+          matches = List(
+            SearchMatch(
+              path = "test.txt",
+              line = 1,
+              matchText = "Line containing the matched content", // Example match text
+              contextBefore = List(),
+              contextAfter = List()
+            )
+          ),
+          isTruncated = false,
+          totalMatches = 1
+        )
+
+      case _ =>
+        WorkspaceAgentErrorResponse("unknown", "Unhandled command", "UNKNOWN_COMMAND")
+
     }
 
     val interface: WorkspaceAgentInterface = new WorkspaceAgentInterfaceRemote(handler)

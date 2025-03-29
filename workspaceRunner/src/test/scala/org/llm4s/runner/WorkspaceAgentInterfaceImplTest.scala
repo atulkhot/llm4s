@@ -34,18 +34,19 @@ class WorkspaceAgentInterfaceImplTest extends AnyFlatSpec with Matchers with org
   it should "explore files in the workspace" in {
     val response = interface.exploreFiles(".")
 
-    (response.files.map(_.path) should contain).allOf("test1.txt", "test2.txt", "subdir")
+    val normalizedPaths = response.files.map(f => f.path.replace("\\", "/"))
+    (normalizedPaths should contain).allOf("test1.txt", "test2.txt", "subdir")
     response.isTruncated shouldBe false
 
     // Test recursive exploration
     val recursiveResponse = interface.exploreFiles(".", recursive = Some(true))
-    recursiveResponse.files.map(_.path) should contain("subdir/nested.txt")
+    recursiveResponse.files.map(f => f.path.replace("\\", "/")) should contain("subdir/nested.txt")
   }
 
   it should "read file content" in {
     val response = interface.readFile("test1.txt")
 
-    response.content shouldBe "Hello, world!\nThis is a test file.\nLine 3"
+    response.content.replace("\r\n", "\n") shouldBe "Hello, world!\nThis is a test file.\nLine 3"
     response.metadata.path shouldBe "test1.txt"
     response.totalLines shouldBe 3
 
@@ -82,9 +83,28 @@ class WorkspaceAgentInterfaceImplTest extends AnyFlatSpec with Matchers with org
 
     // Verify modification
     val content = new String(Files.readAllBytes(tempDir.resolve("modify-test.txt")), StandardCharsets.UTF_8)
+
+    println("----- DEBUG [TEST]: Content read after modifyFile -----")
+    println(s"```\n${content}\n```") // Print the content clearly delimited
+    println("----- END DEBUG [TEST] -----")
+
     content should include("Modified Line 2")
     content should include("Modified Line 3")
-    (content should not).include("Old Line 3")
+    // (content should not).include("Line 3")
+
+    val lineSep = System.lineSeparator()
+
+// Construct the exact expected string. Note: writer.println adds a newline AFTER EACH line.
+    val expectedContent = Seq(
+      "Line 1",
+      "Modified Line 2",
+      "Modified Line 3",
+      "Line 5"
+    ).mkString(lineSep) + lineSep // Add the trailing newline added by the last println
+
+// Perform the precise comparison
+    content shouldBe expectedContent
+
   }
 
   it should "search files for content" in {
@@ -102,8 +122,12 @@ class WorkspaceAgentInterfaceImplTest extends AnyFlatSpec with Matchers with org
 
   it should "execute commands" in {
     // This test is platform-dependent, so we'll use a simple command
-    val response = interface.executeCommand("echo 'test command'")
-
+    val testCommand = if (System.getProperty("os.name").startsWith("Windows")) {
+      "echo test command"
+    } else {
+      "echo 'test command'"
+    }
+    val response = interface.executeCommand(testCommand)
     response.exitCode shouldBe 0
     response.stdout should include("test command")
   }

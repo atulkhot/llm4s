@@ -571,7 +571,16 @@ class WorkspaceAgentInterfaceImpl(workspaceRoot: String) extends WorkspaceAgentI
     val timeoutMs = timeout.getOrElse(30000) // Default 30 seconds
     val env       = environment.getOrElse(Map.empty)
 
-    val processBuilder = Process(command, workDir, env.toSeq: _*)
+    val cmd = if (System.getProperty("os.name").contains("Windows")) {
+      Seq("cmd.exe", "/c", command)
+    } else {
+      Seq("sh", "-c", command)
+    }
+    val processBuilder = Process(
+      command = cmd,
+      cwd = workDir,
+      extraEnv = env.toSeq: _*
+    )
 
     val stdout    = new StringBuilder
     val stderr    = new StringBuilder
