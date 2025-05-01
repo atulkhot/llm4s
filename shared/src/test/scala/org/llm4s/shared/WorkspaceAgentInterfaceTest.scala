@@ -2,9 +2,9 @@ package org.llm4s.shared
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.llm4s.shared._
+import org.scalatest.OptionValues
 
-class WorkspaceAgentInterfaceTest extends AnyFlatSpec with Matchers {
+class WorkspaceAgentInterfaceTest extends AnyFlatSpec with Matchers with OptionValues {
 
   "WorkspaceAgentInterfaceRemote" should "convert method calls to commands and responses" in {
     // Create a handler that returns predefined responses based on command type
@@ -152,7 +152,7 @@ class WorkspaceAgentInterfaceTest extends AnyFlatSpec with Matchers {
 
     exception.error shouldBe "File not found"
     exception.code shouldBe "FILE_NOT_FOUND"
-    exception.details shouldBe Some("The file missing.txt does not exist")
+    exception.details.value shouldBe "The file missing.txt does not exist"
   }
 
   it should "throw exception for unexpected response types" in {

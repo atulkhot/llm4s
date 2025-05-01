@@ -147,6 +147,7 @@ val crossLibDependencies = Seq(
 lazy val crossTestScala2 = (project in file("crosstest/scala2"))
   .settings(
     name := "crosstest-scala2",
+    Test / scalaSource := baseDirectory.value / "src/test/scala",
     scalaVersion := scala213,
     crossScalaVersions := Seq(scala213),
     resolvers += Resolver.mavenLocal,
