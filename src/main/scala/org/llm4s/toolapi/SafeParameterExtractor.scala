@@ -1,6 +1,7 @@
 package org.llm4s.toolapi
 
 import ujson.Value
+import scala.annotation.tailrec
 
 /**
  * Safe parameter extraction with type checking and path navigation
@@ -30,6 +31,7 @@ case class SafeParameterExtractor(params: ujson.Value) {
       val pathParts = path.split('.')
 
       // Navigate to the value using a recursive approach instead of boundary
+      @tailrec
       def navigatePath(current: ujson.Value, remainingParts: List[String]): Either[String, ujson.Value] = {
         if (remainingParts.isEmpty) {
           Right(current)
