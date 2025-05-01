@@ -137,7 +137,7 @@ sbt testCross
 sbt fullCrossTest
 ```
 
-> **Note:** For detailed information about our cross-testing strategy and setup, see [crosstest/README.md](crosstest/README.md)
+> **Note:** For detailed information about our cross-testing strategy and setup, see [crossTest/README.md](crossTest/README.md)
 >
 ## Roadmap
 
