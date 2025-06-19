@@ -1,6 +1,7 @@
 package org.llm4s.imagegeneration.provider
 
 import org.llm4s.imagegeneration._
+
 import java.time.Instant
 import java.util.Base64
 
@@ -139,26 +140,23 @@ class HuggingFaceClient(config: HuggingFaceConfig) extends ImageGenerationClient
         Left(ServiceError(s"Health check failed: ${e.getMessage}", 0))
     }
   }
-  
+  /**
+   * @param huggingClientPayload the payload for which to generate json
+   * @return the resulting json string
+   */
+  def createJsonPayload(huggingClientPayload: HuggingClientPayload): String =
+    upickle.default.write(huggingClientPayload)
+
+  /**
+   * @param prompt the prompt for the payload
+   * @param options image generation options
+   * @return the payload converted to a json string
+   */
   private def buildPayload(prompt: String, options: ImageGenerationOptions): String = {
-    // Build JSON string manually to avoid ujson issues
-    val params = scala.collection.mutable.Map[String, Any](
-      "guidance_scale" -> options.guidanceScale,
-      "num_inference_steps" -> options.inferenceSteps
-    )
-    
-    options.negativePrompt.foreach(np => params("negative_prompt") = np)
-    options.seed.foreach(s => params("seed") = s)
-    
-    // Simple JSON construction
-    val paramsJson = params.map { case (k, v) => 
-      v match {
-        case s: String => s""""$k": "$v""""
-        case n => s""""$k": $v"""
-      }
-    }.mkString(", ")
-    
-    s"""{"inputs": "$prompt", "parameters": {$paramsJson}}"""
+    val payload = HuggingClientPayload(prompt, options)
+    val jsonStr = createJsonPayload(payload)
+    logger.debug("Payload: {} - Json: {}", payload, jsonStr)
+    jsonStr
   }
   
   private def makeHttpRequest(payload: String): requests.Response = {

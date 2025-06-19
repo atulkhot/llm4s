@@ -99,7 +99,7 @@ lazy val root = (project in file("."))
       "com.anthropic"      % "anthropic-java"  % "1.1.0",
       "ch.qos.logback"     % "logback-classic" % "1.5.18",
       "com.knuddels"       % "jtokkit"         % "1.1.0",
-      "com.lihaoyi"       %% "upickle"         % "4.1.0",
+      "com.lihaoyi"       %% "upickle"         % "4.2.1",
       "com.lihaoyi"       %% "requests"        % "0.9.0",
       "org.java-websocket" % "Java-WebSocket"  % "1.5.3",
       "org.scalatest"     %% "scalatest"       % "3.2.19" % Test
