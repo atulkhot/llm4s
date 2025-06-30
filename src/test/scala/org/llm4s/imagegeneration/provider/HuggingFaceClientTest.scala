@@ -1,11 +1,12 @@
 package org.llm4s.imagegeneration.provider
 
-import org.llm4s.imagegeneration.{ HuggingFaceConfig, ImageGenerationOptions }
+import org.llm4s.imagegeneration.{HuggingFaceConfig, ImageGenerationOptions}
+import org.scalamock.scalatest.MockFactory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import upickle.default._
+import upickle.default.*
 
-class HuggingFaceClientTest extends AnyFlatSpec with Matchers {
+class HuggingFaceClientTest extends AnyFlatSpec with Matchers with MockFactory  {
 
   "buildPayload" should "create a valid JSON payload with all parameters" in {
     // Arrange
@@ -95,5 +96,9 @@ class HuggingFaceClientTest extends AnyFlatSpec with Matchers {
     // Assert
     val parsedPayload = read[HuggingClientPayload](payload)
     parsedPayload.parameters.seed shouldBe Some(12345L)
+  }
+  
+  it should "return a Right(value) on success" in {
+    
   }
 }

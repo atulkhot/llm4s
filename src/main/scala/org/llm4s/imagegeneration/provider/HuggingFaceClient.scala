@@ -221,7 +221,7 @@ class HuggingFaceClient(config: HuggingFaceConfig) extends ImageGenerationClient
    * @param payload The JSON payload to send with the HTTP request.
    * @return Either an ImageGenerationError if the request fails or a successful `requests.Response` object.
    */
-  private def makeHttpRequest(payload: String): Either[ImageGenerationError, requests.Response] = {
+  def makeHttpRequest(payload: String): Either[ImageGenerationError, requests.Response] = {
     val url = s"https://api-inference.huggingface.co/models/${config.model}"
     val headers = Map(
       "Authorization" -> s"Bearer ${config.apiKey}",
