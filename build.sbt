@@ -1,6 +1,5 @@
 import com.typesafe.sbt.packager.docker.Cmd
-import sbt.Keys.{libraryDependencies, *}
-
+import sbt.Keys.{ libraryDependencies, * }
 
 // Define supported Scala versions
 val scala213 = "2.13.16"
@@ -11,9 +10,9 @@ inThisBuild(
     crossScalaVersions := List(scala213, scala3),
     scalaVersion       := scala3,
 //    version            := "0.1.6",
-    organization       := "org.llm4s",
-    organizationName   := "llm4s",
-    versionScheme      := Some("early-semver"),
+    organization     := "org.llm4s",
+    organizationName := "llm4s",
+    versionScheme    := Some("early-semver"),
     // Scalafmt configuration
 //    scalafmtOnCompile := true,
     // Maven central repository deployment
@@ -27,7 +26,6 @@ inThisBuild(
         url("https://github.com/rorygraves")
       )
     ),
-
     ThisBuild / publishTo := {
       val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
       if (isSnapshot.value) Some("central-snapshots".at(centralSnapshots))
@@ -51,16 +49,16 @@ def scalacOptionsForVersion(scalaVersion: String): Seq[String] =
     case Some((2, 13)) =>
       Seq(
         // "-Xfatal-warnings",   // Temporarily disabled for cross-compilation
-        //"-deprecation", // Emit warning and location for usages of deprecated APIs
-        "-feature",     // Emit warning for feature usage
-        "-unchecked"    // Enable warnings where generated code depends on assumptions
+        // "-deprecation", // Emit warning and location for usages of deprecated APIs
+        "-feature",  // Emit warning for feature usage
+        "-unchecked" // Enable warnings where generated code depends on assumptions
         // "-Wunused:imports"    // Temporarily disabled for cross-compilation
       )
     case Some((3, _)) =>
       Seq(
-        "-explain",         // Explain errors in more detail
-        //"-Xfatal-warnings", // Fail on warnings
-        "-source:3.3"       // Ensure Scala 3 syntax
+        "-explain", // Explain errors in more detail
+        // "-Xfatal-warnings", // Fail on warnings
+        "-source:3.3" // Ensure Scala 3 syntax
       )
     case _ => Seq.empty
   }
@@ -102,7 +100,8 @@ lazy val root = (project in file("."))
       "com.lihaoyi"       %% "upickle"         % "4.2.1",
       "com.lihaoyi"       %% "requests"        % "0.9.0",
       "org.java-websocket" % "Java-WebSocket"  % "1.5.3",
-      "org.scalatest"     %% "scalatest"       % "3.2.19" % Test
+      "org.scalatest"     %% "scalatest"       % "3.2.19" % Test,
+      "org.scalamock"     %% "scalamock"       % "7.3.3"  % Test,
     )
   )
 
@@ -192,7 +191,8 @@ lazy val crossTestScala2 = (project in file("crosstest/scala2"))
     scalacOptions ++= Seq(
       "-Ytasty-reader"
     )
-  ).dependsOn(root)
+  )
+  .dependsOn(root)
 
 lazy val crossTestScala3 = (project in file("crosstest/scala3"))
   .settings(
@@ -209,7 +209,8 @@ lazy val crossTestScala3 = (project in file("crosstest/scala3"))
       "-Xfatal-warnings"
     ),
     libraryDependencies ++= crossLibDependencies
-  ).dependsOn(root)
+  )
+  .dependsOn(root)
 
 // Commands remain the same
 addCommandAlias("buildAll", ";clean;+compile;+test")

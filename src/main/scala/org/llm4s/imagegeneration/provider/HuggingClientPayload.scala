@@ -2,15 +2,14 @@ package org.llm4s.imagegeneration.provider
 
 import org.llm4s.imagegeneration.ImageGenerationOptions
 
-
 case class HuggingClientPayload(
-                                 inputs: String,
-                                 parameters: Parameters
-                               )
+  inputs: String,
+  parameters: Parameters
+)
 
 object HuggingClientPayload {
   import Parameters._
-  def apply(prompt: String, options: ImageGenerationOptions): HuggingClientPayload = {
+  def apply(prompt: String, options: ImageGenerationOptions): HuggingClientPayload =
     HuggingClientPayload(
       inputs = prompt,
       parameters = Parameters(
@@ -20,7 +19,6 @@ object HuggingClientPayload {
         seed = options.seed
       )
     )
-  }
   // The variable e could be replaced with _ - works well in Scala 3 but gives error for Scala 2
   implicit val e: upickle.default.ReadWriter[HuggingClientPayload] = upickle.default.macroRW[HuggingClientPayload]
 }

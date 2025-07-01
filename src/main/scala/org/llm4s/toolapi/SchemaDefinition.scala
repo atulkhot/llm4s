@@ -24,7 +24,7 @@ case class StringSchema(
       "description" -> ujson.Str(description)
     )
 
-    enumValues.foreach(values => base("enum") = ujson.Arr(values.map(ujson.Str(_)):_*))
+    enumValues.foreach(values => base("enum") = ujson.Arr(values.map(ujson.Str(_)): _*))
     minLength.foreach(min => base("minLength") = ujson.Num(min))
     maxLength.foreach(max => base("maxLength") = ujson.Num(max))
 
@@ -182,7 +182,7 @@ case class ObjectSchema[T](
       "type"                 -> ujson.Str("object"),
       "description"          -> ujson.Str(description),
       "properties"           -> props,
-      "required"             -> ujson.Arr(required.map(ujson.Str(_)):_*),
+      "required"             -> ujson.Arr(required.map(ujson.Str(_)): _*),
       "additionalProperties" -> ujson.Bool(additionalProperties)
     )
   }

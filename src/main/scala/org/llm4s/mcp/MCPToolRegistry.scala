@@ -4,36 +4,36 @@ import org.llm4s.toolapi._
 import upickle.default._
 import ujson._
 import scala.concurrent.duration._
-import scala.util.{Try, Success, Failure}
+import scala.util.{ Try, Success, Failure }
 import org.slf4j.LoggerFactory
 
 // MCP-aware tool registry that integrates with the existing tool API
 class MCPToolRegistry(
   mcpServers: Seq[MCPServerConfig],
   localTools: Seq[ToolFunction[_, _]] = Seq.empty,
-  cacheTTL: Duration = 10.minutes 
+  cacheTTL: Duration = 10.minutes
 ) extends ToolRegistry(localTools) {
 
-  private val logger = LoggerFactory.getLogger(getClass)
-  private var mcpClients: Map[String, MCPClient] = Map.empty
-  private var toolCache: Map[String, CachedTools] = Map.empty 
+  private val logger                              = LoggerFactory.getLogger(getClass)
+  private var mcpClients: Map[String, MCPClient]  = Map.empty
+  private var toolCache: Map[String, CachedTools] = Map.empty
 
   logger.info(s"Initializing MCPToolRegistry with ${mcpServers.size} MCP servers and ${localTools.size} local tools")
   logger.debug(s"Cache TTL set to ${cacheTTL}")
 
-  // Override to return ALL tools (local + MCP) 
+  // Override to return ALL tools (local + MCP)
   override def tools: Seq[ToolFunction[_, _]] = getAllTools
 
   // Execute tools, trying local first then MCP
   override def execute(request: ToolCallRequest): Either[ToolCallError, ujson.Value] = {
     logger.debug(s"Executing tool request: ${request.functionName}")
-    
+
     // Try local tools first
     super.execute(request) match {
-      case Right(result) => 
+      case Right(result) =>
         logger.debug(s"Tool ${request.functionName} executed successfully via local tools")
         Right(result)
-      case Left(_) => 
+      case Left(_) =>
         logger.debug(s"Tool ${request.functionName} not found in local tools, trying MCP tools")
         // If local tools fail, try MCP tools
         findMCPTool(request.functionName) match {
@@ -44,11 +44,11 @@ class MCPToolRegistry(
               logger.debug(s"MCP tool ${request.functionName} executed successfully")
               result
             } catch {
-              case e: Exception => 
+              case e: Exception =>
                 logger.error(s"MCP tool ${request.functionName} execution failed", e)
                 Left(ToolCallError.ExecutionError(e))
             }
-          case None => 
+          case None =>
             logger.warn(s"Tool ${request.functionName} not found in any registry (local or MCP)")
             Left(ToolCallError.UnknownFunction(request.functionName))
         }
@@ -56,14 +56,15 @@ class MCPToolRegistry(
   }
 
   // Get tools in OpenAI format
-  override def getOpenAITools(strict: Boolean = true): ujson.Arr = {
+  override def getOpenAITools(strict: Boolean = true): ujson.Arr =
     ujson.Arr.from(tools.map(_.toOpenAITool(strict)))
-  }
 
   // Get all tools (local + MCP)
   def getAllTools: Seq[ToolFunction[_, _]] = {
     val mcpTools = getAllMCPTools
-    logger.debug(s"Total tools available: ${localTools.size} local + ${mcpTools.size} MCP = ${localTools.size + mcpTools.size}")
+    logger.debug(
+      s"Total tools available: ${localTools.size} local + ${mcpTools.size} MCP = ${localTools.size + mcpTools.size}"
+    )
     localTools ++ mcpTools
   }
 
@@ -76,9 +77,8 @@ class MCPToolRegistry(
   }
 
   // Get all MCP tools from all servers
-  private def getAllMCPTools: Seq[ToolFunction[_, _]] = {
+  private def getAllMCPTools: Seq[ToolFunction[_, _]] =
     mcpServers.flatMap(getToolsFromServer)
-  }
 
   // Get tools from a specific server (with caching)
   private def getToolsFromServer(server: MCPServerConfig): Seq[ToolFunction[_, _]] = {
@@ -88,7 +88,7 @@ class MCPToolRegistry(
         logger.debug(s"Cache hit for server ${server.name}, returning ${cached.tools.size} cached tools")
         cached.tools
       case Some(_) =>
-        logger.debug(s"Cache expired for server ${server.name}, refreshing tools") 
+        logger.debug(s"Cache expired for server ${server.name}, refreshing tools")
         refreshToolsFromServer(server, now)
       case None =>
         logger.debug(s"No cache entry for server ${server.name}, fetching tools")
@@ -101,7 +101,7 @@ class MCPToolRegistry(
     logger.info(s"Refreshing tools from MCP server: ${server.name}")
     Try {
       val client = getOrCreateClient(server)
-      val tools = client.getTools()
+      val tools  = client.getTools()
       toolCache = toolCache + (server.name -> CachedTools(tools, timestamp))
       logger.info(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       tools
@@ -114,7 +114,7 @@ class MCPToolRegistry(
   }
 
   // Get or create MCP client for a server
-  private def getOrCreateClient(server: MCPServerConfig): MCPClient = {
+  private def getOrCreateClient(server: MCPServerConfig): MCPClient =
     mcpClients.getOrElse(
       server.name, {
         logger.info(s"Creating new MCP client for server: ${server.name}")
@@ -124,7 +124,6 @@ class MCPToolRegistry(
         client
       }
     )
-  }
 
   // Utility methods for cache management
   def clearCache(): Unit = {
@@ -159,7 +158,6 @@ class MCPToolRegistry(
 
 // Helper case class for cleaner caching
 private case class CachedTools(tools: Seq[ToolFunction[_, _]], timestamp: Long) {
-  def isExpired(now: Long, ttl: Duration): Boolean = {
+  def isExpired(now: Long, ttl: Duration): Boolean =
     (now - timestamp) >= ttl.toMillis
-  }
 }

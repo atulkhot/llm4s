@@ -3,12 +3,12 @@ package org.llm4s.imagegeneration
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import java.time.Instant
-import java.nio.file.{Files, Paths}
+import java.nio.file.{ Files, Paths }
 import java.util.Base64
 
 /**
  * Comprehensive test suite for the Image Generation API.
- * 
+ *
  * Includes unit tests for models, integration tests for the factory,
  * and a mock implementation for testing without a real server.
  */
@@ -18,8 +18,9 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
 
   class MockImageGenerationClient extends ImageGenerationClient {
     // Mock image data - a simple 1x1 PNG pixel in base64
-    private val mockImageData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-    
+    private val mockImageData =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
     override def generateImage(
       prompt: String,
       options: ImageGenerationOptions = ImageGenerationOptions()
@@ -30,15 +31,17 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
       if (prompt.toLowerCase.contains("inappropriate")) {
         return Left(InvalidPromptError("Prompt contains inappropriate content"))
       }
-      Right(GeneratedImage(
-        data = mockImageData,
-        format = options.format,
-        size = options.size,
-        prompt = prompt,
-        seed = options.seed
-      ))
+      Right(
+        GeneratedImage(
+          data = mockImageData,
+          format = options.format,
+          size = options.size,
+          prompt = prompt,
+          seed = options.seed
+        )
+      )
     }
-    
+
     override def generateImages(
       prompt: String,
       count: Int,
@@ -46,25 +49,24 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
     ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
       if (count <= 0) return Left(ValidationError("Count must be positive"))
       if (count > 10) return Left(InsufficientResourcesError("Cannot generate more than 10 images at once"))
-      
+
       generateImage(prompt, options) match {
         case Right(singleImage) =>
-          val images = (1 to count).map { i =>
-            singleImage.copy(seed = options.seed.map(_ + i))
-          }
+          val images = (1 to count).map(i => singleImage.copy(seed = options.seed.map(_ + i)))
           Right(images)
         case Left(error) => Left(error)
       }
     }
-    
-    override def health(): Either[ImageGenerationError, ServiceStatus] = {
-      Right(ServiceStatus(
-        status = HealthStatus.Healthy,
-        message = "Mock service is always healthy",
-        queueLength = Some(0),
-        averageGenerationTime = Some(100)
-      ))
-    }
+
+    override def health(): Either[ImageGenerationError, ServiceStatus] =
+      Right(
+        ServiceStatus(
+          status = HealthStatus.Healthy,
+          message = "Mock service is always healthy",
+          queueLength = Some(0),
+          averageGenerationTime = Some(100)
+        )
+      )
   }
 
   // ===== MODEL UNIT TESTS =====
@@ -73,7 +75,7 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
     ImageSize.Square512.width shouldBe 512
     ImageSize.Square512.height shouldBe 512
     ImageSize.Square512.description shouldBe "512x512"
-    
+
     ImageSize.Landscape768x512.width shouldBe 768
     ImageSize.Landscape768x512.height shouldBe 512
     ImageSize.Landscape768x512.description shouldBe "768x512"
@@ -82,14 +84,14 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
   test("ImageFormat provides correct metadata") {
     ImageFormat.PNG.extension shouldBe "png"
     ImageFormat.PNG.mimeType shouldBe "image/png"
-    
+
     ImageFormat.JPEG.extension shouldBe "jpg"
     ImageFormat.JPEG.mimeType shouldBe "image/jpeg"
   }
 
   test("ImageGenerationOptions has sensible defaults") {
     val options = ImageGenerationOptions()
-    
+
     options.size shouldBe ImageSize.Square512
     options.format shouldBe ImageFormat.PNG
     options.seed shouldBe None
@@ -99,45 +101,44 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
   }
 
   test("GeneratedImage decodes base64 data correctly") {
-    val testData = "test image data".getBytes("UTF-8")
+    val testData   = "test image data".getBytes("UTF-8")
     val base64Data = Base64.getEncoder.encodeToString(testData)
-    
+
     val image = GeneratedImage(
       data = base64Data,
       format = ImageFormat.PNG,
       size = ImageSize.Square512,
       prompt = "test prompt"
     )
-    
+
     image.asBytes shouldBe testData
     image.prompt shouldBe "test prompt"
   }
 
   test("GeneratedImage can save to file") {
-    val testData = "test image data".getBytes("UTF-8")
+    val testData   = "test image data".getBytes("UTF-8")
     val base64Data = Base64.getEncoder.encodeToString(testData)
-    
+
     val image = GeneratedImage(
       data = base64Data,
       format = ImageFormat.PNG,
       size = ImageSize.Square512,
       prompt = "test prompt"
     )
-    
+
     val tempFile = Files.createTempFile("test_image", ".png")
-    
-    try {
+
+    try
       image.saveToFile(tempFile) match {
         case Right(savedImage) =>
           savedImage.filePath shouldBe Some(tempFile)
           Files.readAllBytes(tempFile) shouldBe testData
-          
+
         case Left(error) =>
           fail(s"Failed to save image: ${error.message}")
       }
-    } finally {
+    finally
       Files.deleteIfExists(tempFile)
-    }
   }
 
   // ===== FACTORY TESTS =====
@@ -145,7 +146,7 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
   test("ImageGeneration creates correct client for StableDiffusion config") {
     val config = StableDiffusionConfig()
     val client = ImageGeneration.client(config)
-    
+
     client shouldBe a[org.llm4s.imagegeneration.provider.StableDiffusionClient]
   }
 
@@ -161,7 +162,7 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
       baseUrl = "http://test:8080",
       apiKey = Some("test-key")
     )
-    
+
     client shouldBe a[org.llm4s.imagegeneration.provider.StableDiffusionClient]
   }
 
@@ -190,7 +191,7 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
       apiKey = Some("custom-key"),
       timeout = 120000
     )
-    
+
     customSdConfig.baseUrl shouldBe "http://custom:9000"
     customSdConfig.apiKey shouldBe Some("custom-key")
     customSdConfig.timeout shouldBe 120000
@@ -211,10 +212,10 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
 
   test("Mock client generates image successfully") {
     val result = mockClient.generateImage("A beautiful landscape")
-    
+
     result shouldBe a[Right[_, _]]
     val image = result.right.get
-    
+
     image.prompt shouldBe "A beautiful landscape"
     image.format shouldBe ImageFormat.PNG
     image.size shouldBe ImageSize.Square512
@@ -229,12 +230,12 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
       guidanceScale = 10.0,
       negativePrompt = Some("blurry")
     )
-    
+
     val result = mockClient.generateImage("Test prompt", options)
-    
+
     result shouldBe a[Right[_, _]]
     val image = result.right.get
-    
+
     image.size shouldBe ImageSize.Landscape768x512
     image.format shouldBe ImageFormat.JPEG
     image.seed shouldBe Some(42)
@@ -245,7 +246,7 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
     val result1 = mockClient.generateImage("")
     result1 shouldBe a[Left[_, _]]
     result1.left.get shouldBe a[ValidationError]
-    
+
     // Inappropriate content
     val result2 = mockClient.generateImage("inappropriate content")
     result2 shouldBe a[Left[_, _]]
@@ -254,11 +255,11 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
 
   test("Mock client generates multiple images") {
     val result = mockClient.generateImages("Test prompt", 3)
-    
+
     result shouldBe a[Right[_, _]]
     val images = result.right.get
-    
-    images should have length 3
+
+    (images should have).length(3)
     images.foreach { image =>
       image.prompt shouldBe "Test prompt"
       image.data should not be empty
@@ -269,7 +270,7 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
     // Test negative/zero count
     mockClient.generateImages("Test", -1) shouldBe a[Left[_, _]]
     mockClient.generateImages("Test", 0) shouldBe a[Left[_, _]]
-    
+
     // Test too many images
     val result = mockClient.generateImages("Test", 15)
     result shouldBe a[Left[_, _]]
@@ -278,10 +279,10 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
 
   test("Mock client reports healthy status") {
     val result = mockClient.health()
-    
+
     result shouldBe a[Right[_, _]]
     val status = result.right.get
-    
+
     status.status shouldBe HealthStatus.Healthy
     status.message shouldBe "Mock service is always healthy"
     status.queueLength shouldBe Some(0)
@@ -291,11 +292,11 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
   // ===== ERROR HANDLING TESTS =====
 
   test("Error types have correct messages") {
-    val authError = AuthenticationError("Invalid API key")
-    val serviceError = ServiceError("Server error", 500)
+    val authError       = AuthenticationError("Invalid API key")
+    val serviceError    = ServiceError("Server error", 500)
     val validationError = ValidationError("Invalid prompt")
-    val unknownError = UnknownError(new RuntimeException("Something went wrong"))
-    
+    val unknownError    = UnknownError(new RuntimeException("Something went wrong"))
+
     authError.message shouldBe "Invalid API key"
     serviceError.message shouldBe "Server error"
     serviceError.code shouldBe 500
@@ -311,8 +312,8 @@ class ImageGenerationTest extends AnyFunSuite with Matchers {
       "test prompt",
       baseUrl = "http://localhost:99999"
     )
-    
+
     result shouldBe a[Left[_, _]]
     result.left.get shouldBe a[ImageGenerationError]
   }
-} 
+}
