@@ -2,8 +2,7 @@ package org.llm4s.imagegeneration
 
 import java.time.Instant
 import java.nio.file.Path
-import org.llm4s.imagegeneration.provider.StableDiffusionClient
-import org.llm4s.imagegeneration.provider.HuggingFaceClient
+import org.llm4s.imagegeneration.provider.{ HttpClient, HuggingFaceClient, StableDiffusionClient }
 
 // ===== ERROR HANDLING =====
 
@@ -208,7 +207,8 @@ object ImageGeneration {
       case sdConfig: StableDiffusionConfig =>
         new StableDiffusionClient(sdConfig)
       case hfConfig: HuggingFaceConfig =>
-        new HuggingFaceClient(hfConfig)
+        val httpClient = HttpClient.createHttpClient(hfConfig)
+        new HuggingFaceClient(hfConfig, httpClient)
     }
 
   /** Convenience method for quick image generation */

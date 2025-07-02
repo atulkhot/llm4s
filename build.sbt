@@ -1,6 +1,8 @@
 import com.typesafe.sbt.packager.docker.Cmd
 import sbt.Keys.{libraryDependencies, *}
 
+
+// Define supported Scala versions
 val scala213 = "2.13.16"
 val scala3   = "3.7.1"
 val scala3CompilerOptions = Seq(
@@ -117,6 +119,8 @@ lazy val root = (project in file("."))
       "com.knuddels"       % "jtokkit"         % "1.1.0",
       "com.lihaoyi"       %% "requests"        % "0.9.0",
       "org.java-websocket" % "Java-WebSocket"  % "1.5.3",
+      "org.scalatest"     %% "scalatest"       % "3.2.19" % Test,
+      "org.scalamock"     %% "scalamock"       % "7.3.3"  % Test,
     )
   )
 
