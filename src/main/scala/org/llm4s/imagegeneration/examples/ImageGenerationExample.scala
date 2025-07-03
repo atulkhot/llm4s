@@ -4,7 +4,9 @@ import org.llm4s.imagegeneration.*
 import org.slf4j.LoggerFactory
 
 import java.nio.file.Paths
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
 
 /**
  * Example demonstrating the Image Generation API for Stable Diffusion.
@@ -39,7 +41,7 @@ object ImageGenerationExample {
 
     val prompt = "A beautiful sunset over mountains, digital art"
 
-    ImageGeneration.generateWithStableDiffusion(prompt).map {
+    val result = ImageGeneration.generateWithStableDiffusion(prompt).map {
       case Right(image) =>
         logger.info(s"✓ Generated image: ${image.size.description}")
 
@@ -50,6 +52,8 @@ object ImageGenerationExample {
       case Left(error) =>
         logger.error(s"✗ Generation failed: ${error.message}")
     }
+
+    Await.result(result, Duration.Inf)
   }
 
   def advancedExample(): Unit = {
@@ -69,7 +73,7 @@ object ImageGenerationExample {
       timeout = 120000
     )
 
-    ImageGeneration.generateImage(prompt, config, options).map {
+    val result = ImageGeneration.generateImage(prompt, config, options).map {
       case Right(image) =>
         logger.info(s"✓ Generated cyberpunk image with seed: ${image.seed.get}")
 
@@ -79,6 +83,8 @@ object ImageGenerationExample {
       case Left(error) =>
         logger.error(s"✗ Advanced generation failed: ${error.message}")
     }
+
+    Await.result(result, Duration.Inf)
   }
 
   def multipleImagesExample(): Unit = {
@@ -87,7 +93,7 @@ object ImageGenerationExample {
     val prompt = "A cute robot, cartoon style"
     val config = StableDiffusionConfig()
 
-    ImageGeneration.generateImages(prompt, 3, config).map {
+    val result = ImageGeneration.generateImages(prompt, 3, config).map {
       case Right(images) =>
         logger.info(s"✓ Generated ${images.length} robot images")
 
@@ -99,13 +105,15 @@ object ImageGenerationExample {
       case Left(error) =>
         logger.error(s"✗ Multiple generation failed: ${error.message}")
     }
+
+    Await.result(result, Duration.Inf)
   }
 
   def errorHandlingExample(): Unit = {
     logger.info("\n--- Error Handling Example ---")
 
     // This will fail because there's no server at this address
-    ImageGeneration.generateWithStableDiffusion(
+    val result1 = ImageGeneration.generateWithStableDiffusion(
       "This will fail",
       baseUrl = "http://localhost:99999"
     ).map {
@@ -122,6 +130,8 @@ object ImageGenerationExample {
             logger.info(s"✓ Other expected error: ${error.message}")
         }
     }
+
+    Await.result(result1, Duration.Inf)
 
     // Health check example
     val config = StableDiffusionConfig()
