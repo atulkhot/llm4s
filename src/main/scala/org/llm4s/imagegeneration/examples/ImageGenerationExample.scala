@@ -1,8 +1,10 @@
 package org.llm4s.imagegeneration.examples
 
-import org.llm4s.imagegeneration._
+import org.llm4s.imagegeneration.*
 import org.slf4j.LoggerFactory
+
 import java.nio.file.Paths
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Example demonstrating the Image Generation API for Stable Diffusion.
@@ -37,7 +39,7 @@ object ImageGenerationExample {
 
     val prompt = "A beautiful sunset over mountains, digital art"
 
-    ImageGeneration.generateWithStableDiffusion(prompt) match {
+    ImageGeneration.generateWithStableDiffusion(prompt).map {
       case Right(image) =>
         logger.info(s"✓ Generated image: ${image.size.description}")
 
@@ -67,7 +69,7 @@ object ImageGenerationExample {
       timeout = 120000
     )
 
-    ImageGeneration.generateImage(prompt, config, options) match {
+    ImageGeneration.generateImage(prompt, config, options).map {
       case Right(image) =>
         logger.info(s"✓ Generated cyberpunk image with seed: ${image.seed.get}")
 
@@ -85,7 +87,7 @@ object ImageGenerationExample {
     val prompt = "A cute robot, cartoon style"
     val config = StableDiffusionConfig()
 
-    ImageGeneration.generateImages(prompt, 3, config) match {
+    ImageGeneration.generateImages(prompt, 3, config).map {
       case Right(images) =>
         logger.info(s"✓ Generated ${images.length} robot images")
 
@@ -106,7 +108,7 @@ object ImageGenerationExample {
     ImageGeneration.generateWithStableDiffusion(
       "This will fail",
       baseUrl = "http://localhost:99999"
-    ) match {
+    ).map {
       case Right(_) =>
         logger.info("Unexpected success!")
 

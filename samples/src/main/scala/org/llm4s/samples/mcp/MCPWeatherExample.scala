@@ -4,7 +4,6 @@ import org.llm4s.mcp._
 import org.llm4s.toolapi._
 import org.llm4s.toolapi.tools._
 import org.slf4j.LoggerFactory
-import upickle.default._
 import scala.concurrent.duration._
 
 /**

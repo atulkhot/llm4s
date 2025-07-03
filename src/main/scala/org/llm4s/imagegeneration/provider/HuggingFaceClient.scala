@@ -1,10 +1,12 @@
 package org.llm4s.imagegeneration.provider
 
-import org.llm4s.imagegeneration._
+import org.llm4s.imagegeneration.*
 
 import java.time.Instant
 import java.util.Base64
+import scala.concurrent.Future
 import scala.util.Try
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * HuggingFace Inference API client for image generation.
@@ -43,8 +45,10 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: BaseHttpClient) e
   override def generateImage(
     prompt: String,
     options: ImageGenerationOptions = ImageGenerationOptions()
-  ): Either[ImageGenerationError, GeneratedImage] =
-    generateImages(prompt, 1, options).map(_.head)
+  ): Future[Either[ImageGenerationError, GeneratedImage]] =
+    generateImages(prompt, 1, options).map { images =>
+    images.map(_.head)
+  }
 
   /**
    * Validates the provided prompt to ensure it is not empty or blank.
@@ -130,7 +134,7 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: BaseHttpClient) e
     prompt: String,
     count: Int,
     options: ImageGenerationOptions = ImageGenerationOptions()
-  ): Either[ImageGenerationError, Seq[GeneratedImage]] = {
+  ): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] = {
 
     val result: Either[ImageGenerationError, IndexedSeq[GeneratedImage]] = for {
       prompt     <- validatePrompt(prompt)
@@ -143,7 +147,7 @@ class HuggingFaceClient(config: HuggingFaceConfig, httpClient: BaseHttpClient) e
 
     result.left.foreach(error => logger.error("Error generating images: {}", error.message))
 
-    result
+    Future.successful(result)
   }
 
   /**

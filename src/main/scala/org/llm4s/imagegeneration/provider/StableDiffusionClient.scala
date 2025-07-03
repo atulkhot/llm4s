@@ -1,8 +1,11 @@
 package org.llm4s.imagegeneration.provider
 
-import org.llm4s.imagegeneration._
+import org.llm4s.imagegeneration.*
 import org.slf4j.LoggerFactory
-import upickle.default._
+import upickle.default.*
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
  * Represents the JSON payload for the Stable Diffusion WebUI API's text-to-image endpoint.
@@ -61,14 +64,14 @@ class StableDiffusionClient(config: StableDiffusionConfig) extends ImageGenerati
   override def generateImage(
     prompt: String,
     options: ImageGenerationOptions = ImageGenerationOptions()
-  ): Either[ImageGenerationError, GeneratedImage] =
-    generateImages(prompt, 1, options).map(_.head)
+  ): Future[Either[ImageGenerationError, GeneratedImage]] =
+    generateImages(prompt, 1, options).map(imageList => imageList.map(_.head))
 
   override def generateImages(
     prompt: String,
     count: Int,
     options: ImageGenerationOptions = ImageGenerationOptions()
-  ): Either[ImageGenerationError, Seq[GeneratedImage]] =
+  ): Future[Either[ImageGenerationError, Seq[GeneratedImage]]] = Future.successful {
     try {
       logger.info(s"Generating $count image(s) with prompt: $prompt")
 
@@ -86,6 +89,7 @@ class StableDiffusionClient(config: StableDiffusionConfig) extends ImageGenerati
         logger.error(s"Error generating images: ${e.getMessage}", e)
         Left(UnknownError(e))
     }
+  }
 
   override def health(): Either[ImageGenerationError, ServiceStatus] =
     try {
