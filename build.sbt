@@ -1,6 +1,5 @@
 import com.typesafe.sbt.packager.docker.Cmd
-import sbt.Keys.{libraryDependencies, *}
-
+import sbt.Keys.{ libraryDependencies, * }
 
 // Define supported Scala versions
 val scala213 = "2.13.16"
@@ -8,7 +7,7 @@ val scala3   = "3.7.1"
 val scala3CompilerOptions = Seq(
   "-explain",
   "-explain-types",
-  "-Wconf:cat=unused:s",   // suppress unused warnings
+  "-Wconf:cat=unused:s",      // suppress unused warnings
   "-Wconf:cat=deprecation:s", // suppress deprecation warnings
   "-source:3.3",
   "-Wsafe-init",
@@ -35,8 +34,8 @@ inThisBuild(
     organization       := "org.llm4s",
     organizationName   := "llm4s",
     versionScheme      := Some("early-semver"),
-    homepage := Some(url("https://github.com/llm4s/")),
-    licenses := List("MIT" -> url("https://mit-license.org/")),
+    homepage           := Some(url("https://github.com/llm4s/")),
+    licenses           := List("MIT" -> url("https://mit-license.org/")),
     developers := List(
       Developer(
         "rorygraves",
@@ -45,7 +44,6 @@ inThisBuild(
         url("https://github.com/rorygraves")
       )
     ),
-
     ThisBuild / publishTo := {
       val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
       if (isSnapshot.value) Some("central-snapshots".at(centralSnapshots))
@@ -84,7 +82,6 @@ def scalacOptionsForVersion(scalaVersion: String): Seq[String] =
 
 lazy val commonSettings = Seq(
   Compile / scalacOptions := scalacOptionsForVersion(scalaVersion.value),
-
   Compile / unmanagedSourceDirectories ++= {
     val sourceDir = (Compile / sourceDirectory).value
     CrossVersion.partialVersion(scalaVersion.value) match {
@@ -102,6 +99,7 @@ lazy val commonSettings = Seq(
     }
   },
   libraryDependencies ++= List(
+    "org.typelevel" %% "cats-core"       % "2.12.0",
     "com.lihaoyi"   %% "upickle"         % "4.2.1",
     "ch.qos.logback" % "logback-classic" % "1.5.18",
     "org.scalatest" %% "scalatest"       % "3.2.19" % Test
@@ -115,20 +113,19 @@ lazy val root = (project in file("."))
     name := "llm4s",
     commonSettings,
     libraryDependencies ++= List(
-      "com.azure"          % "azure-ai-openai" % "1.0.0-beta.16",
-      "com.anthropic"      % "anthropic-java"  % "1.1.0",
-      "com.knuddels"       % "jtokkit"         % "1.1.0",
-      "com.lihaoyi"       %% "requests"        % "0.9.0",
-      "org.java-websocket" % "Java-WebSocket"  % "1.5.3",
-      "org.scalatest"     %% "scalatest"       % "3.2.19" % Test,
-      "org.scalamock"     %% "scalamock"       % "7.3.3"  % Test,
-      "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
-      "com.lihaoyi"                   %% "ujson" % "4.2.1",
-      "org.apache.pdfbox" % "pdfbox" % "2.0.27",
-      "org.apache.poi" % "poi-ooxml" % "5.2.3",
-      "com.lihaoyi" %% "requests" % "0.8.0",
-      "org.jsoup" % "jsoup" % "1.17.2"
-
+      "com.azure"                      % "azure-ai-openai" % "1.0.0-beta.16",
+      "com.anthropic"                  % "anthropic-java"  % "1.1.0",
+      "com.knuddels"                   % "jtokkit"         % "1.1.0",
+      "com.lihaoyi"                   %% "requests"        % "0.9.0",
+      "org.java-websocket"             % "Java-WebSocket"  % "1.5.3",
+      "org.scalatest"                 %% "scalatest"       % "3.2.19" % Test,
+      "org.scalamock"                 %% "scalamock"       % "7.3.3"  % Test,
+      "com.softwaremill.sttp.client4" %% "core"            % "4.0.0-M7",
+      "com.lihaoyi"                   %% "ujson"           % "4.2.1",
+      "org.apache.pdfbox"              % "pdfbox"          % "2.0.27",
+      "org.apache.poi"                 % "poi-ooxml"       % "5.2.3",
+      "com.lihaoyi"                   %% "requests"        % "0.8.0",
+      "org.jsoup"                      % "jsoup"           % "1.17.2"
     )
   )
 
@@ -150,8 +147,8 @@ lazy val workspaceRunner = (project in file("workspaceRunner"))
     name                := "workspace-runner",
     commonSettings,
     libraryDependencies ++= List(
-      "com.lihaoyi"   %% "cask"            % "0.9.7",
-      "com.lihaoyi"   %% "requests"        % "0.9.0",
+      "com.lihaoyi" %% "cask"     % "0.9.7",
+      "com.lihaoyi" %% "requests" % "0.9.0",
     ),
     Docker / dockerBuildOptions := Seq("--platform=linux/amd64"),
     dockerCommands ++= Seq(
@@ -190,22 +187,21 @@ lazy val samples = (project in file("samples"))
 
 lazy val crossLibDependencies = Def.setting {
   Seq(
-    "org.llm4s"     %% "llm4s"     % version.value,
-    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-    "com.softwaremill.sttp.client4" %% "core"  % "4.0.0-M7",
-    "com.lihaoyi"                   %% "ujson" % "4.2.1",
-    "org.apache.pdfbox" % "pdfbox" % "2.0.27",
-    "org.apache.poi" % "poi-ooxml" % "5.2.3",
-    "com.lihaoyi" %% "requests" % "0.8.0",
-    "org.jsoup" % "jsoup" % "1.17.2"
-
+    "org.llm4s"                     %% "llm4s"     % version.value,
+    "org.scalatest"                 %% "scalatest" % "3.2.19" % Test,
+    "com.softwaremill.sttp.client4" %% "core"      % "4.0.0-M7",
+    "com.lihaoyi"                   %% "ujson"     % "4.2.1",
+    "org.apache.pdfbox"              % "pdfbox"    % "2.0.27",
+    "org.apache.poi"                 % "poi-ooxml" % "5.2.3",
+    "com.lihaoyi"                   %% "requests"  % "0.8.0",
+    "org.jsoup"                      % "jsoup"     % "1.17.2"
   )
 }
 
 lazy val crossTestScala2 = (project in file("crosstest/scala2"))
   .settings(
-    name               := "crosstest-scala2",
-    scalaVersion       := scala213,
+    name         := "crosstest-scala2",
+    scalaVersion := scala213,
     resolvers += Resolver.mavenLocal,
     resolvers += Resolver.defaultLocal,
     libraryDependencies ++= crossLibDependencies.value
@@ -213,8 +209,8 @@ lazy val crossTestScala2 = (project in file("crosstest/scala2"))
 
 lazy val crossTestScala3 = (project in file("crosstest/scala3"))
   .settings(
-    name               := "crosstest-scala3",
-    scalaVersion       := scala3,
+    name         := "crosstest-scala3",
+    scalaVersion := scala3,
     resolvers += Resolver.mavenLocal,
     resolvers += Resolver.defaultLocal,
     libraryDependencies ++= crossLibDependencies.value,
