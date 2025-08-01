@@ -30,11 +30,14 @@ object PlaywrightExample {
   private val logger = LoggerFactory.getLogger(getClass)
 
   private def logNoToolsError(): Unit = {
-    logger.error("❌ No tools available from Playwright MCP server")
-    logger.info("This could indicate:")
-    logger.info("  1. The MCP server failed to start")
-    logger.info("  2. Network issues preventing package download")
-    logger.info("  3. Node.js or npx not properly installed")
+    logger.error(
+      """
+        |❌ No tools available from Playwright MCP server
+        |This could indicate:
+        |  1. The MCP server failed to start
+        |  2. Network issues preventing package download
+        |  3. Node.js or npx not properly installed
+        |""".stripMargin)
   }
 
   private def logToolsInfo(tools: Seq[ToolFunction[?, ?]]): Unit = {
