@@ -7,6 +7,7 @@ import java.time.Instant
 import java.util.Base64
 import java.nio.file.{ Files, Paths }
 import scala.util.{ Try, Success, Failure }
+import cats.syntax.all._
 
 /**
  * Anthropic Claude Vision client for AI-powered image analysis.
@@ -126,8 +127,8 @@ class AnthropicVisionClient(config: AnthropicVisionConfig) extends org.llm4s.ima
     Try {
       // This is a simplified implementation
       // In a real implementation, you would use an HTTP client to call the Anthropic API
-      import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
       import java.net.URI
+      import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 
       val client = HttpClient.newHttpClient()
 
@@ -176,13 +177,22 @@ class AnthropicVisionClient(config: AnthropicVisionConfig) extends org.llm4s.ima
       }
     }
 
-  private def extractContentFromResponse(jsonResponse: String): String = {
+  def extractContentFromResponse(jsonResponse: String): String = {
     // Simplified JSON parsing for Anthropic response format
-    val contentPattern = "\"text\"\\s*:\\s*\"([^\"]+)\"".r
-    contentPattern.findFirstMatchIn(jsonResponse) match {
-      case Some(m) => m.group(1).replace("\\n", "\n").replace("\\\"", "\"")
-      case None    => "Could not parse response from Anthropic Vision API"
-    }
+    val contentPattern = """
+        |"text"\s*:\s*"([^"]+)"\s*
+        |""".stripMargin.strip().r
+
+    val result = for {
+      regexMatch <- contentPattern
+        .findFirstMatchIn(jsonResponse)
+        .toRight("Could not parse response from Anthropic Vision API")
+      matchedStr <- Option(regexMatch.group(1))
+        .toRight("Internal error: Parsing was successful, but no match was found")
+      s <- matchedStr.replace("\\n", "\n").replace("\\\"", "\"").asRight[String]
+    } yield s
+
+    result.fold(identity, identity)
   }
 
   private def parseVisionResponse(response: String, metadata: ImageMetadata): ImageAnalysisResult = {
