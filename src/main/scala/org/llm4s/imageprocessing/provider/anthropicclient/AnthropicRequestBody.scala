@@ -1,0 +1,51 @@
+package org.llm4s.imageprocessing.provider.anthropicclient
+
+import monocle.syntax.all._
+import upickle.default.{ macroRW, ReadWriter => RW, _ }
+
+private[anthropicclient] case class PromptType(`type`: String, text: String = "")
+object PromptType {
+  implicit val rw: RW[PromptType] = macroRW
+}
+
+private[anthropicclient] case class SourceType(`type`: String, media_type: String, data: String = "")
+object SourceType {
+  implicit val rw: RW[SourceType] = macroRW
+}
+
+private[anthropicclient] case class ImageType(`type`: String, source: SourceType)
+object ImageType {
+  implicit val rw: RW[ImageType] = macroRW
+}
+
+private[anthropicclient] case class Message(role: String = "", content: List[(PromptType, ImageType)])
+object Message {
+  implicit val rw: RW[Message] = macroRW
+}
+
+private[anthropicclient] case class AnthropicRequestBody(model: String, max_tokens: Int, messages: List[Message])
+object AnthropicRequestBody {
+  implicit val rw: RW[AnthropicRequestBody] = macroRW
+
+  def apply(): AnthropicRequestBody = new AnthropicRequestBody("", 0, Nil)
+  def serialize(configModel: String, maxTokens: Int, prompt: String, data: String): String = {
+    write(
+      AnthropicRequestBody()
+        .focus(_.model)
+        .replace(configModel)
+        .focus(_.max_tokens)
+        .replace(maxTokens)
+        .focus(_.messages)
+        .replace(
+          List(
+            Message(
+              role = "user",
+              content = List(
+                PromptType("text", prompt) -> ImageType("image", SourceType("base64", "image/jpeg", data))
+              )
+            )
+          )
+        )
+    )
+  }
+}

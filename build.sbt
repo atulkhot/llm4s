@@ -110,6 +110,8 @@ lazy val commonSettings = Seq(
     "org.typelevel" %% "cats-core"       % "2.13.0",
     "com.lihaoyi"   %% "upickle"         % "4.2.1",
     "ch.qos.logback" % "logback-classic" % "1.5.18",
+    "dev.optics" %% "monocle-core"  % "3.3.0",
+    "dev.optics" %% "monocle-macro" % "3.3.0",
     "org.scalatest" %% "scalatest"       % "3.2.19" % Test
   )
 )
