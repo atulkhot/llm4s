@@ -15,11 +15,11 @@ class AnthropicRequestBodySpec extends AnyFlatSpec with Matchers {
 
   it should "correctly serialize request with prompt and image data" in {
     val configModel = "claude-3-opus-20240229"
-    val maxTokens = 1024
-    val prompt = "Describe this image"
-    val imageData = "base64EncodedImageData"
+    val maxTokens   = 1024
+    val prompt      = "Describe this image"
+    val imageData   = "base64EncodedImageData"
 
-    val serialized = AnthropicRequestBody.serialize(configModel, maxTokens, prompt, imageData)
+    val serialized   = AnthropicRequestBody.serialize(configModel, maxTokens, prompt, imageData)
     val deserialized = read[AnthropicRequestBody](serialized)
 
     deserialized.model shouldBe configModel
@@ -57,10 +57,9 @@ class AnthropicRequestBodySpec extends AnyFlatSpec with Matchers {
       )
     )
 
-    val serialized = write(body)
+    val serialized   = write(body)
     val deserialized = read[AnthropicRequestBody](serialized)
 
     deserialized shouldBe body
   }
 }
-

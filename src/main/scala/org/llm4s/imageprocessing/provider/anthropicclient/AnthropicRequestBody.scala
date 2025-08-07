@@ -28,7 +28,7 @@ object AnthropicRequestBody {
   implicit val rw: RW[AnthropicRequestBody] = macroRW
 
   def apply(): AnthropicRequestBody = new AnthropicRequestBody("", 0, Nil)
-  def serialize(configModel: String, maxTokens: Int, prompt: String, data: String): String = {
+  def serialize(configModel: String, maxTokens: Int, prompt: String, data: String): String =
     write(
       AnthropicRequestBody()
         .focus(_.model)
@@ -47,5 +47,4 @@ object AnthropicRequestBody {
           )
         )
     )
-  }
 }

@@ -129,9 +129,9 @@ class AnthropicVisionClient(config: AnthropicVisionConfig) extends org.llm4s.ima
       // This is a simplified implementation
       // In a real implementation, you would use an HTTP client to call the Anthropic API
       import java.net.URI
-    import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
+      import java.net.http.{ HttpClient, HttpRequest, HttpResponse }
 
-      val client = HttpClient.newHttpClient()
+      val client      = HttpClient.newHttpClient()
       val requestBody = AnthropicRequestBody.serialize(config.model, 1000, prompt, base64Image)
 
       val request = HttpRequest
