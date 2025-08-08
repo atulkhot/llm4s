@@ -30,21 +30,17 @@ object AnthropicRequestBody {
   def apply(): AnthropicRequestBody = new AnthropicRequestBody("", 0, Nil)
   def serialize(configModel: String, maxTokens: Int, prompt: String, data: String): String =
     write(
-      AnthropicRequestBody()
-        .focus(_.model)
-        .replace(configModel)
-        .focus(_.max_tokens)
-        .replace(maxTokens)
-        .focus(_.messages)
-        .replace(
-          List(
-            Message(
-              role = "user",
-              content = List(
-                PromptType("text", prompt) -> ImageType("image", SourceType("base64", "image/jpeg", data))
-              )
+      AnthropicRequestBody(
+        model = configModel,
+        max_tokens = maxTokens,
+        messages = List(
+          Message(
+            role = "user",
+            content = List(
+              PromptType("text", prompt) -> ImageType("image", SourceType("base64", "image/jpeg", data))
             )
           )
         )
+      )
     )
 }
