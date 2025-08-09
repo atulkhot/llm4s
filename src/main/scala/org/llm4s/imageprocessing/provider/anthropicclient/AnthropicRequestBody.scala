@@ -1,6 +1,5 @@
 package org.llm4s.imageprocessing.provider.anthropicclient
 
-import monocle.syntax.all._
 import upickle.default.{ macroRW, ReadWriter => RW, _ }
 
 private[anthropicclient] case class PromptType(`type`: String, text: String = "")
@@ -18,7 +17,7 @@ object ImageType {
   implicit val rw: RW[ImageType] = macroRW
 }
 
-private[anthropicclient] case class Message(role: String = "", content: List[(PromptType, ImageType)])
+private[anthropicclient] case class Message(role: String = "", content: (PromptType, ImageType))
 object Message {
   implicit val rw: RW[Message] = macroRW
 }
@@ -36,9 +35,7 @@ object AnthropicRequestBody {
         messages = List(
           Message(
             role = "user",
-            content = List(
-              PromptType("text", prompt) -> ImageType("image", SourceType("base64", "image/jpeg", data))
-            )
+            content = PromptType("text", prompt) -> ImageType("image", SourceType("base64", "image/jpeg", data))
           )
         )
       )

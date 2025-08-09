@@ -30,9 +30,8 @@ class AnthropicRequestBodySpec extends AnyFlatSpec with Matchers {
 
     val message = messages.head
     message.role shouldBe "user"
-    message.content should have size 1
 
-    val (promptType, imageType) = message.content.head
+    val (promptType, imageType) = message.content
     promptType.`type` shouldBe "text"
     promptType.text shouldBe prompt
 
@@ -49,10 +48,8 @@ class AnthropicRequestBodySpec extends AnyFlatSpec with Matchers {
       messages = List(
         Message(
           role = "user",
-          content = List(
-            PromptType("text", "test prompt") ->
-              ImageType("image", SourceType("base64", "image/jpeg", "test-data"))
-          )
+          PromptType("text", "test prompt") ->
+            ImageType("image", SourceType("base64", "image/jpeg", "test-data"))
         )
       )
     )
