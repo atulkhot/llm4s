@@ -233,10 +233,10 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       toolsData.map(convertMCPToolToToolFunction).toSeq
     } match {
       case Success(tools) =>
-        logger.info(s"Successfully retrieved ${tools.size} tools from ${config.name}")
+        logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
         tools
       case Failure(exception) =>
-        logger.error(s"Failed to parse tools from ${config.name}: ${exception.getMessage}", exception)
+        logger.error("Failed to parse tools from {}: {}", config.name, exception.getMessage)
         Seq.empty
     }
   }
