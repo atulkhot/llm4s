@@ -1,8 +1,8 @@
 package org.llm4s.mcp
 
-import org.llm4s.toolapi._
+import org.llm4s.toolapi.*
 import org.slf4j.LoggerFactory
-import ujson.{ Value, read => ujsonRead }
+import ujson.{ Value, read as ujsonRead }
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.{ Failure, Success, Try }
@@ -216,7 +216,7 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       case Right(response) =>
         response.result match {
           case Some(result) =>
-            parseTools(result) 
+            parseTools(result)
           case None =>
             logger.warn(s"No tools result from ${config.name}")
             Seq.empty
@@ -227,18 +227,20 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
     }
   }
 
-  private def parseTools(result: Value): Seq[ToolFunction[Value, Value]] = {
-    Try {
-      val toolsData = result("tools").arr
+  private def parseTools(value: Value): Seq[ToolFunction[Value, Value]] = {
+    val result = Try {
+      val toolsData = value("tools").arr
       toolsData.map(convertMCPToolToToolFunction).toSeq
-    } match {
-      case Success(tools) =>
-        logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
-        tools
-      case Failure(exception) =>
-        logger.error("Failed to parse tools from {}: {}", config.name, exception.getMessage)
-        Seq.empty
     }
+    result.fold (
+      ex => {
+        logger.error("Failed to parse tools from {}: {}", config.name, ex.getMessage)
+      },
+      tools => {
+        logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
+      }
+    )
+    result.getOrElse(Seq.empty)
   }
 
   // Closes the transport connection and resets initialization state
