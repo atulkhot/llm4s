@@ -216,23 +216,27 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       case Right(response) =>
         response.result match {
           case Some(result) =>
-            Try {
-              val toolsData = result("tools").arr
-              toolsData.map(convertMCPToolToToolFunction).toSeq
-            } match {
-              case Success(tools) =>
-                logger.info(s"Successfully retrieved ${tools.size} tools from ${config.name}")
-                tools
-              case Failure(exception) =>
-                logger.error(s"Failed to parse tools from ${config.name}: ${exception.getMessage}", exception)
-                Seq.empty
-            }
+            parseTools(result) 
           case None =>
             logger.warn(s"No tools result from ${config.name}")
             Seq.empty
         }
       case Left(errorMsg) =>
         logger.error(s"Failed to fetch tools from ${config.name}: $errorMsg")
+        Seq.empty
+    }
+  }
+
+  private def parseTools(result: Value): Seq[ToolFunction[Value, Value]] = {
+    Try {
+      val toolsData = result("tools").arr
+      toolsData.map(convertMCPToolToToolFunction).toSeq
+    } match {
+      case Success(tools) =>
+        logger.info(s"Successfully retrieved ${tools.size} tools from ${config.name}")
+        tools
+      case Failure(exception) =>
+        logger.error(s"Failed to parse tools from ${config.name}: ${exception.getMessage}", exception)
         Seq.empty
     }
   }
