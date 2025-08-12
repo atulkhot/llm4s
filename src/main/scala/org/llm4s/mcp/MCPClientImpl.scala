@@ -199,9 +199,7 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       transportImpl <- transport.toRight(s"No transport available for ${config.name}")
       tools <- trySendingRequest(transportImpl)
     } yield tools
-    result.left.foreach { errMsg =>
-      logger.warn(errMsg)
-    }
+    result.left.foreach(errMsg => logger.warn(errMsg))
     result.leftFlatMap(_ => Seq.empty.asRight[String])
   }
 
@@ -225,12 +223,8 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       toolsData.map(convertMCPToolToToolFunction).toSeq
     }
     result.fold (
-      ex => {
-        logger.error("Failed to parse tools from {}: {}", config.name, ex.getMessage)
-      },
-      tools => {
-        logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
-      }
+      ex => logger.error("Failed to parse tools from {}: {}", config.name, ex.getMessage),
+      tools => logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
     )
     result.getOrElse(Seq.empty).asRight[String]
   }
