@@ -210,14 +210,9 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
     }
 
   def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
-    val listRequest = JsonRpcRequest(
-      jsonrpc = "2.0",
-      id = generateId(),
-      method = "tools/list", // method value for getting available tools
-      params = None
-    )
     val result = for {
-      response <- transportImpl.sendRequest(listRequest)
+      request <- MCPClientImpl.listRequest.copy(id = generateId()).asRight[String]
+      response <- transportImpl.sendRequest(request)
       toolsValue <- response.result.toRight(s"No tools result from ${config.name}")
       tools <- parseTools(toolsValue)
     } yield tools
@@ -376,4 +371,13 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
         Left("No transport available")
     }
   }
+}
+
+object MCPClientImpl {
+  val listRequest: JsonRpcRequest = JsonRpcRequest(
+    jsonrpc = "2.0",
+    id = "",
+    method = "tools/list", // method value for getting available tools
+    params = None
+  )
 }
