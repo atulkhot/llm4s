@@ -208,7 +208,7 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
             Seq.empty.asRight[String]
         }
     }
-  
+
   def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
     val listRequest = JsonRpcRequest(
       jsonrpc = "2.0",
@@ -216,19 +216,16 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       method = "tools/list", // method value for getting available tools
       params = None
     )
-    transportImpl.sendRequest(listRequest) match {
-      case Right(response) =>
-        response.result match {
-          case Some(result) =>
-            parseTools(result)
-          case None =>
-            logger.warn(s"No tools result from ${config.name}")
-            Seq.empty.asRight[String]
-        }
-      case Left(errorMsg) =>
-        logger.error(s"Failed to fetch tools from ${config.name}: $errorMsg")
-        Seq.empty.asRight[String]
+    val result = for {
+      response <- transportImpl.sendRequest(listRequest)
+      toolsValue <- response.result.toRight(s"No tools result from ${config.name}")
+      tools <- parseTools(toolsValue)
+    } yield tools
+
+    result.left.foreach { errMsg =>
+      logger.warn(errMsg)
     }
+    result.leftFlatMap(_ => Seq.empty.asRight[String])
   }
 
   private def parseTools(value: Value): Either[String, Seq[ToolFunction[_, _]]] = {
