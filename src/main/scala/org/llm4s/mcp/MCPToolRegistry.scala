@@ -122,22 +122,19 @@ class MCPToolRegistry(
     }
   }
 
+  def createMCPClient(server: MCPServerConfig): MCPClient = {
+    logger.info(s"Creating new MCP client for server: ${server.name}")
+    val client = new MCPClientImpl(server)
+    logger.debug(s"MCP client created successfully for server: ${server.name}")
+    client
+  }
+
   // Get or create MCP client for a server (thread-safe)
   private def getOrCreateClient(server: MCPServerConfig): MCPClient =
-    Option(mcpClients.get(server.name)) match {
-      case Some(client) => client
-      case None         =>
-        // Use computeIfAbsent for thread-safe client creation
-        mcpClients.computeIfAbsent(
-          server.name,
-          { _ =>
-            logger.info(s"Creating new MCP client for server: ${server.name}")
-            val client = new MCPClientImpl(server)
-            logger.debug(s"MCP client created successfully for server: ${server.name}")
-            client
-          }
-        )
-    }
+    // Use computeIfAbsent for thread-safe client creation
+    Option(mcpClients.get(server.name)).getOrElse(
+        mcpClients.computeIfAbsent(server.name, _ => createMCPClient(server))
+    )
 
   // Utility methods for cache management
   def clearCache(): Unit = {
