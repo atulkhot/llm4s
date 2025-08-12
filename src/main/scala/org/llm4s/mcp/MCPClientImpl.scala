@@ -1,15 +1,14 @@
 package org.llm4s.mcp
 
+import cats.*
+import cats.data.*
+import cats.implicits.*
 import org.llm4s.toolapi.*
 import org.slf4j.LoggerFactory
 import ujson.{ Value, read as ujsonRead }
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.{ Failure, Success, Try }
-
-import cats._
-import cats.data._
-import cats.implicits._
 
 /**
  * Implementation of MCP client that connects to and communicates with MCP servers.

@@ -7,6 +7,9 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.{ Failure, Success, Try }
+import cats.*
+import cats.data.*
+import cats.implicits.*
 
 // MCP-aware tool registry that integrates with the existing tool API
 class MCPToolRegistry(
@@ -100,26 +103,25 @@ class MCPToolRegistry(
   // Refresh tools from server and update cache
   private def refreshToolsFromServer(server: MCPServerConfig, timestamp: Long): Seq[ToolFunction[_, _]] = {
     logger.info(s"Refreshing tools from MCP server: ${server.name}")
-    Try {
-      val client = getOrCreateClient(server)
-      val tools  = client.getTools().getOrElse(Seq.empty)
+    val result = for {
+      client <- Try(getOrCreateClient(server)).toEither.leftMap(_.getMessage)
+      tools <- client.getTools()
+    } yield {
+      logger.debug(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       toolCache.put(server.name, CachedTools(tools, timestamp))
-      logger.info(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       tools
-    } match {
-      case Success(tools) => tools
-      case Failure(exception) =>
-        logger.error(s"Failed to refresh tools from ${server.name}: ${exception.getMessage}", exception)
-
-        // Clean up failed client
-        Option(mcpClients.remove(server.name)).foreach { failedClient =>
-          Try(failedClient.close()).recover { case e =>
-            logger.debug(s"Error closing failed client for ${server.name}: ${e.getMessage}")
-          }
-        }
-
-        Seq.empty
     }
+    result.left.foreach { errMsg =>
+      logger.error("Failed to refresh tools from ${}: {}", server.name, errMsg)
+
+      // Clean up failed client
+      Option(mcpClients.remove(server.name)).foreach { failedClient =>
+        Try(failedClient.close()).recover { case e =>
+          logger.debug(s"Error closing failed client for ${server.name}: ${e.getMessage}")
+        }
+      }
+    }
+    result.getOrElse(Seq.empty)
   }
 
   def createMCPClient(server: MCPServerConfig): MCPClient = {
