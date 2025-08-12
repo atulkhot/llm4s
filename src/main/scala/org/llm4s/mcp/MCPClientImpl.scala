@@ -193,21 +193,17 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
   private var isTransportInitialized = false
 
   // Retrieves and converts all available tools from the MCP server
-  override def getTools(): Either[String, Seq[ToolFunction[_, _]]] =
-    // Ensure we're initialized
-    initialize() match {
-      case Left(errorMsg) =>
-        logger.error(s"Failed to initialize MCP client for ${config.name}: $errorMsg")
-        Seq.empty.asRight[String]
-      case Right(_) =>
-        transport match {
-          case Some(transportImpl) =>
-            trySendingRequest(transportImpl)
-          case None =>
-            logger.error(s"No transport available for ${config.name}")
-            Seq.empty.asRight[String]
-        }
+  override def getTools(): Either[String, Seq[ToolFunction[_, _]]] = {
+    val result = for {
+      _ <- initialize() // Ensure we're initialized
+      transportImpl <- transport.toRight(s"No transport available for ${config.name}")
+      tools <- trySendingRequest(transportImpl)
+    } yield tools
+    result.left.foreach { errMsg =>
+      logger.warn(errMsg)
     }
+    result.leftFlatMap(_ => Seq.empty.asRight[String])
+  }
 
   def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
     val result = for {
