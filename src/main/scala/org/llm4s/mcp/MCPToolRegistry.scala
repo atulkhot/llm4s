@@ -102,7 +102,7 @@ class MCPToolRegistry(
     logger.info(s"Refreshing tools from MCP server: ${server.name}")
     Try {
       val client = getOrCreateClient(server)
-      val tools  = client.getTools()
+      val tools  = client.getTools().getOrElse(Seq.empty)
       toolCache.put(server.name, CachedTools(tools, timestamp))
       logger.info(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       tools

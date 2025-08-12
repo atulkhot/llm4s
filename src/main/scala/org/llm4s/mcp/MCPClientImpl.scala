@@ -7,6 +7,10 @@ import ujson.{ Value, read as ujsonRead }
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.{ Failure, Success, Try }
 
+import cats._
+import cats.data._
+import cats.implicits._
+
 /**
  * Implementation of MCP client that connects to and communicates with MCP servers.
  * Handles JSON-RPC communication, tool discovery, and execution delegation.
@@ -189,23 +193,23 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
   private var isTransportInitialized = false
 
   // Retrieves and converts all available tools from the MCP server
-  override def getTools(): Seq[ToolFunction[_, _]] =
+  override def getTools(): Either[String, Seq[ToolFunction[_, _]]] =
     // Ensure we're initialized
     initialize() match {
       case Left(errorMsg) =>
         logger.error(s"Failed to initialize MCP client for ${config.name}: $errorMsg")
-        Seq.empty
+        Seq.empty.asRight[String]
       case Right(_) =>
         transport match {
           case Some(transportImpl) =>
             trySendingRequest(transportImpl)
           case None =>
             logger.error(s"No transport available for ${config.name}")
-            Seq.empty
+            Seq.empty.asRight[String]
         }
     }
-
-  def trySendingRequest(transportImpl: MCPTransportImpl): Seq[ToolFunction[Value, Value]] = {
+  
+  def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
     val listRequest = JsonRpcRequest(
       jsonrpc = "2.0",
       id = generateId(),
@@ -219,15 +223,15 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
             parseTools(result)
           case None =>
             logger.warn(s"No tools result from ${config.name}")
-            Seq.empty
+            Seq.empty.asRight[String]
         }
       case Left(errorMsg) =>
         logger.error(s"Failed to fetch tools from ${config.name}: $errorMsg")
-        Seq.empty
+        Seq.empty.asRight[String]
     }
   }
 
-  private def parseTools(value: Value): Seq[ToolFunction[Value, Value]] = {
+  private def parseTools(value: Value): Either[String, Seq[ToolFunction[_, _]]] = {
     val result = Try {
       val toolsData = value("tools").arr
       toolsData.map(convertMCPToolToToolFunction).toSeq
@@ -240,7 +244,7 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
         logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
       }
     )
-    result.getOrElse(Seq.empty)
+    result.getOrElse(Seq.empty).asRight[String]
   }
 
   // Closes the transport connection and resets initialization state
