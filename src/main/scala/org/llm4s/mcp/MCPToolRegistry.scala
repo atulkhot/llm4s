@@ -1,12 +1,14 @@
 package org.llm4s.mcp
 
-import org.llm4s.toolapi._
+import cats.*
+import cats.implicits.*
+import org.llm4s.toolapi.*
 import org.slf4j.LoggerFactory
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.{ Failure, Success, Try }
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 // MCP-aware tool registry that integrates with the existing tool API
 class MCPToolRegistry(
@@ -100,44 +102,42 @@ class MCPToolRegistry(
   // Refresh tools from server and update cache
   private def refreshToolsFromServer(server: MCPServerConfig, timestamp: Long): Seq[ToolFunction[_, _]] = {
     logger.info(s"Refreshing tools from MCP server: ${server.name}")
-    Try {
-      val client = getOrCreateClient(server)
-      val tools  = client.getTools()
+    val result = for {
+      client <- Try(getOrCreateClient(server)).toEither.leftMap(_.getMessage)
+      tools <- client.getTools()
+    } yield {
+      logger.debug(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       toolCache.put(server.name, CachedTools(tools, timestamp))
-      logger.info(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       tools
-    } match {
-      case Success(tools) => tools
-      case Failure(exception) =>
-        logger.error(s"Failed to refresh tools from ${server.name}: ${exception.getMessage}", exception)
-
-        // Clean up failed client
-        Option(mcpClients.remove(server.name)).foreach { failedClient =>
-          Try(failedClient.close()).recover { case e =>
-            logger.debug(s"Error closing failed client for ${server.name}: ${e.getMessage}")
-          }
-        }
-
-        Seq.empty
     }
+    result.left.foreach { errMsg =>
+      logger.error("Failed to refresh tools from ${}: {}", server.name, errMsg)
+      removeServerFromCache(server) // Clean up failed client
+    }
+    result.getOrElse(Seq.empty)
+  }
+
+  private def removeServerFromCache(server: MCPServerConfig): Unit = {
+    Option(mcpClients.remove(server.name)).foreach { failedClient =>
+      Try(failedClient.close()).recover { case e =>
+        logger.debug(s"Error closing failed client for ${server.name}: ${e.getMessage}")
+      }
+    }
+  }
+
+  private def createMCPClient(server: MCPServerConfig): MCPClient = {
+    logger.info(s"Creating new MCP client for server: ${server.name}")
+    val client = new MCPClientImpl(server)
+    logger.debug(s"MCP client created successfully for server: ${server.name}")
+    client
   }
 
   // Get or create MCP client for a server (thread-safe)
   private def getOrCreateClient(server: MCPServerConfig): MCPClient =
-    Option(mcpClients.get(server.name)) match {
-      case Some(client) => client
-      case None         =>
-        // Use computeIfAbsent for thread-safe client creation
-        mcpClients.computeIfAbsent(
-          server.name,
-          { _ =>
-            logger.info(s"Creating new MCP client for server: ${server.name}")
-            val client = new MCPClientImpl(server)
-            logger.debug(s"MCP client created successfully for server: ${server.name}")
-            client
-          }
-        )
-    }
+    // Use computeIfAbsent for thread-safe client creation
+    Option(mcpClients.get(server.name)).getOrElse(
+        mcpClients.computeIfAbsent(server.name, _ => createMCPClient(server))
+    )
 
   // Utility methods for cache management
   def clearCache(): Unit = {

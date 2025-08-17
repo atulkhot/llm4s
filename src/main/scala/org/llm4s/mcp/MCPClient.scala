@@ -17,7 +17,7 @@ trait MCPClient {
    *
    * @return Sequence of tool functions available from this server
    */
-  def getTools(): Seq[ToolFunction[_, _]]
+  def getTools():  Either[String, Seq[ToolFunction[_, _]]]
 
   /**
    * Initializes the MCP connection with handshake protocol.

@@ -1,8 +1,11 @@
 package org.llm4s.mcp
 
-import org.llm4s.toolapi._
+import cats.*
+import cats.data.*
+import cats.implicits.*
+import org.llm4s.toolapi.*
 import org.slf4j.LoggerFactory
-import ujson.{ Value, read => ujsonRead }
+import ujson.{ Value, read as ujsonRead }
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.{ Failure, Success, Try }
@@ -189,50 +192,41 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
   private var isTransportInitialized = false
 
   // Retrieves and converts all available tools from the MCP server
-  override def getTools(): Seq[ToolFunction[_, _]] =
-    // Ensure we're initialized
-    initialize() match {
-      case Left(errorMsg) =>
-        logger.error(s"Failed to initialize MCP client for ${config.name}: $errorMsg")
-        Seq.empty
-      case Right(_) =>
-        transport match {
-          case Some(transportImpl) =>
-            val listRequest = JsonRpcRequest(
-              jsonrpc = "2.0",
-              id = generateId(),
-              method = "tools/list", // method value for getting available tools
-              params = None
-            )
+  override def getTools(): Either[String, Seq[ToolFunction[_, _]]] = {
+    val result = for {
+      _ <- initialize() // Ensure we're initialized
+      transportImpl <- transport.toRight(s"No transport available for ${config.name}")
+      tools <- trySendingRequest(transportImpl)
+    } yield tools
+    result.left.foreach(errMsg => logger.warn(errMsg))
+    result.leftFlatMap(_ => Seq.empty.asRight[String])
+  }
 
-            transportImpl.sendRequest(listRequest) match {
-              case Right(response) =>
-                response.result match {
-                  case Some(result) =>
-                    Try {
-                      val toolsData = result("tools").arr
-                      toolsData.map(convertMCPToolToToolFunction).toSeq
-                    } match {
-                      case Success(tools) =>
-                        logger.info(s"Successfully retrieved ${tools.size} tools from ${config.name}")
-                        tools
-                      case Failure(exception) =>
-                        logger.error(s"Failed to parse tools from ${config.name}: ${exception.getMessage}", exception)
-                        Seq.empty
-                    }
-                  case None =>
-                    logger.warn(s"No tools result from ${config.name}")
-                    Seq.empty
-                }
-              case Left(errorMsg) =>
-                logger.error(s"Failed to fetch tools from ${config.name}: $errorMsg")
-                Seq.empty
-            }
-          case None =>
-            logger.error(s"No transport available for ${config.name}")
-            Seq.empty
-        }
+  def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
+    val result = for {
+      request <- MCPClientImpl.listRequest.copy(id = generateId()).asRight[String]
+      response <- transportImpl.sendRequest(request)
+      toolsValue <- response.result.toRight(s"No tools result from ${config.name}")
+      tools <- parseTools(toolsValue)
+    } yield tools
+
+    result.left.foreach { errMsg =>
+      logger.warn(errMsg)
     }
+    result.leftFlatMap(_ => Seq.empty.asRight[String])
+  }
+
+  private def parseTools(value: Value): Either[String, Seq[ToolFunction[_, _]]] = {
+    val result = Try {
+      val toolsData = value("tools").arr
+      toolsData.map(convertMCPToolToToolFunction).toSeq
+    }
+    result.fold (
+      ex => logger.error("Failed to parse tools from {}: {}", config.name, ex.getMessage),
+      tools => logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
+    )
+    result.getOrElse(Seq.empty).asRight[String]
+  }
 
   // Closes the transport connection and resets initialization state
   override def close(): Unit = {
@@ -366,4 +360,13 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
         Left("No transport available")
     }
   }
+}
+
+object MCPClientImpl {
+  val listRequest: JsonRpcRequest = JsonRpcRequest(
+    jsonrpc = "2.0",
+    id = "",
+    method = "tools/list", // method value for getting available tools
+    params = None
+  )
 }
