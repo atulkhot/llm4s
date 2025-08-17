@@ -1,13 +1,12 @@
 package org.llm4s.mcp
 
-import cats.*
-import cats.implicits.*
-import org.llm4s.toolapi.*
+import cats.implicits._
+import org.llm4s.toolapi._
 import org.slf4j.LoggerFactory
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
+import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 // MCP-aware tool registry that integrates with the existing tool API

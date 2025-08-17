@@ -1,11 +1,9 @@
 package org.llm4s.mcp
 
-import cats.*
-import cats.data.*
-import cats.implicits.*
-import org.llm4s.toolapi.*
+import cats.implicits._
+import org.llm4s.toolapi._
 import org.slf4j.LoggerFactory
-import ujson.{ Value, read as ujsonRead }
+import ujson.{ Value, read => ujsonRead }
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.util.{ Failure, Success, Try }
