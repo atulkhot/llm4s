@@ -103,7 +103,7 @@ class MCPToolRegistry(
     logger.info(s"Refreshing tools from MCP server: ${server.name}")
     val result = for {
       client <- Try(getOrCreateClient(server)).toEither.leftMap(_.getMessage)
-      tools <- client.getTools()
+      tools  <- client.getTools()
     } yield {
       logger.debug(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       toolCache.put(server.name, CachedTools(tools, timestamp))
@@ -116,13 +116,12 @@ class MCPToolRegistry(
     result.getOrElse(Seq.empty)
   }
 
-  private def removeServerFromCache(server: MCPServerConfig): Unit = {
+  private def removeServerFromCache(server: MCPServerConfig): Unit =
     Option(mcpClients.remove(server.name)).foreach { failedClient =>
       Try(failedClient.close()).recover { case e =>
         logger.debug(s"Error closing failed client for ${server.name}: ${e.getMessage}")
       }
     }
-  }
 
   private def createMCPClient(server: MCPServerConfig): MCPClient = {
     logger.info(s"Creating new MCP client for server: ${server.name}")
@@ -135,7 +134,7 @@ class MCPToolRegistry(
   private def getOrCreateClient(server: MCPServerConfig): MCPClient =
     // Use computeIfAbsent for thread-safe client creation
     Option(mcpClients.get(server.name)).getOrElse(
-        mcpClients.computeIfAbsent(server.name, _ => createMCPClient(server))
+      mcpClients.computeIfAbsent(server.name, _ => createMCPClient(server))
     )
 
   // Utility methods for cache management

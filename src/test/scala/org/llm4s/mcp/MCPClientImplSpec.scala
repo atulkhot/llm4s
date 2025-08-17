@@ -19,7 +19,7 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
 
   "MCPClientImpl.getTools" should "return tools when initialization succeeds" in {
     // Arrange
-    val client = new MCPClientImpl(config)
+    val client        = new MCPClientImpl(config)
     val mockTransport = mock[MCPTransportImpl]
 
     // Initialize response
@@ -33,27 +33,29 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
     val toolsResponse = JsonRpcResponse(
       jsonrpc = "2.0",
       id = "2",
-      result = Some(ujson.Obj(
-        "tools" -> ujson.Arr(
-          ujson.Obj(
-            "name" -> "test-tool",
-            "description" -> "A test tool",
-            "parameters" -> ujson.Obj(
-              "type" -> "object",
-              "properties" -> ujson.Obj()
+      result = Some(
+        ujson.Obj(
+          "tools" -> ujson.Arr(
+            ujson.Obj(
+              "name"        -> "test-tool",
+              "description" -> "A test tool",
+              "parameters" -> ujson.Obj(
+                "type"       -> "object",
+                "properties" -> ujson.Obj()
+              )
             )
           )
         )
-      ))
+      )
     )
 
     // Setup expectations
     (mockTransport.sendRequest _)
-      .expects(where { (req: JsonRpcRequest) => req.method == "initialize" })
+      .expects(where((req: JsonRpcRequest) => req.method == "initialize"))
       .returning(Right(initResponse))
 
     (mockTransport.sendRequest _)
-      .expects(where { (req: JsonRpcRequest) => req.method == "initialized" })
+      .expects(where((req: JsonRpcRequest) => req.method == "initialized"))
       .returning(Right(JsonRpcResponse("2.0", "3", None)))
 
     val request = JsonRpcRequest("2.0", "3", "tools/list", None)
@@ -74,7 +76,7 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
 
   it should "return empty sequence when initialization fails" in {
     // Arrange
-    val client = new MCPClientImpl(config)
+    val client        = new MCPClientImpl(config)
     val mockTransport = mock[MCPTransportImpl]
 
     (mockTransport.sendRequest _)
@@ -106,25 +108,30 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
 
   it should "handle invalid tool responses" in {
     // Arrange
-    val client = new MCPClientImpl(config)
+    val client        = new MCPClientImpl(config)
     val mockTransport = mock[MCPTransportImpl]
 
-    val p = JsonRpcRequest("2.0",
+    val p = JsonRpcRequest(
+      "2.0",
       "1",
       "initialize",
-      Some(ujson.Value(
-        """
+      Some(ujson.Value("""
           |{"protocolVersion":"2025-06-18","capabilities":{"tools":{},"roots":{"listChanged":false},"sampling":{}},"clientInfo":{"name":"llm4s-mcp","version":"1.0.0"}}
-          |""".stripMargin)))
+          |""".stripMargin))
+    )
 
     // Mock successful initialization but invalid tools response
     (mockTransport.sendRequest _)
       .expects(p)
-      .returning(Right(JsonRpcResponse(
-        "2.0",
-        "1",
-        Some(ujson.Obj("protocolVersion" -> "2025-06-18"))
-      )))
+      .returning(
+        Right(
+          JsonRpcResponse(
+            "2.0",
+            "1",
+            Some(ujson.Obj("protocolVersion" -> "2025-06-18"))
+          )
+        )
+      )
 
     setTransport(client, Some(mockTransport))
 

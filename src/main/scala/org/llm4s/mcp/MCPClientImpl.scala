@@ -192,9 +192,9 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
   // Retrieves and converts all available tools from the MCP server
   override def getTools(): Either[String, Seq[ToolFunction[_, _]]] = {
     val result = for {
-      _ <- initialize() // Ensure we're initialized
+      _             <- initialize() // Ensure we're initialized
       transportImpl <- transport.toRight(s"No transport available for ${config.name}")
-      tools <- trySendingRequest(transportImpl)
+      tools         <- trySendingRequest(transportImpl)
     } yield tools
     result.left.foreach(errMsg => logger.warn(errMsg))
     result.leftFlatMap(_ => Seq.empty.asRight[String])
@@ -202,15 +202,13 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
 
   def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
     val result = for {
-      request <- MCPClientImpl.listRequest.copy(id = generateId()).asRight[String]
-      response <- transportImpl.sendRequest(request)
+      request    <- MCPClientImpl.listRequest.copy(id = generateId()).asRight[String]
+      response   <- transportImpl.sendRequest(request)
       toolsValue <- response.result.toRight(s"No tools result from ${config.name}")
-      tools <- parseTools(toolsValue)
+      tools      <- parseTools(toolsValue)
     } yield tools
 
-    result.left.foreach { errMsg =>
-      logger.warn(errMsg)
-    }
+    result.left.foreach(errMsg => logger.warn(errMsg))
     result.leftFlatMap(_ => Seq.empty.asRight[String])
   }
 
@@ -219,7 +217,7 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       val toolsData = value("tools").arr
       toolsData.map(convertMCPToolToToolFunction).toSeq
     }
-    result.fold (
+    result.fold(
       ex => logger.error("Failed to parse tools from {}: {}", config.name, ex.getMessage),
       tools => logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
     )
