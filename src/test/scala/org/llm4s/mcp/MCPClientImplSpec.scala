@@ -63,15 +63,13 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
       .expects(request)
       .returning(Right(toolsResponse))
 
-    // Use reflection to set the mock transport
-    setTransport(client, Some(mockTransport))
-
+    client.transport = Some(mockTransport)
     // Act
     val result: Either[String, Seq[ToolFunction[?, ?]]] = client.getTools()
 
     // Assert
     result.isRight shouldBe true
-    result.value.length shouldBe 0
+    result.value should be (Seq.empty[ToolFunction[?, ?]])
   }
 
   it should "return empty sequence when initialization fails" in {
@@ -83,7 +81,7 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
       .expects(*)
       .returning(Left("Initialization failed"))
 
-    setTransport(client, Some(mockTransport))
+    client.transport = Some(mockTransport)
 
     // Act
     val result = client.getTools()
@@ -96,7 +94,7 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
   it should "return empty sequence when no transport is available" in {
     // Arrange
     val client = new MCPClientImpl(config)
-    setTransport(client, None)
+    client.transport = None
 
     // Act
     val result = client.getTools()
@@ -133,20 +131,12 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
         )
       )
 
-    setTransport(client, Some(mockTransport))
-
+    client.transport = Some(mockTransport)
     // Act
     val result = client.getTools()
 
     // Assert
     result.isRight shouldBe true
     result.value shouldBe empty
-  }
-
-  // Helper method to set private transport field using reflection
-  private def setTransport(client: MCPClientImpl, transport: Option[MCPTransportImpl]): Unit = {
-    val field = client.getClass.getDeclaredField("transport")
-    field.setAccessible(true)
-    field.set(client, transport)
   }
 }

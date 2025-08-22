@@ -15,7 +15,7 @@ import scala.util.{ Failure, Success, Try }
  */
 class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
   private val logger                              = LoggerFactory.getLogger(getClass)
-  private var transport: Option[MCPTransportImpl] = None
+  private[mcp] var transport: Option[MCPTransportImpl] = None
   private val requestId                           = new AtomicLong(0)
   private var initialized                         = false
   private var protocolVersion                     = "2025-06-18" // Updated to latest version
@@ -196,8 +196,10 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
       transportImpl <- transport.toRight(s"No transport available for ${config.name}")
       tools         <- trySendingRequest(transportImpl)
     } yield tools
-    result.left.foreach(errMsg => logger.warn(errMsg))
-    result.leftFlatMap(_ => Seq.empty.asRight[String])
+    result.leftFlatMap { errMsg =>
+      logger.error(errMsg)
+      Seq.empty.asRight[String]
+    }
   }
 
   def trySendingRequest(transportImpl: MCPTransportImpl): Either[String, Seq[ToolFunction[_, _]]] = {
@@ -219,7 +221,7 @@ class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
     }
     result.fold(
       ex => logger.error("Failed to parse tools from {}: {}", config.name, ex.getMessage),
-      tools => logger.info("Successfully retrieved {} tools from {}", tools.size, config.name)
+      tools => logger.info("Successfully retrieved from {} {} tools", config.name, tools.size)
     )
     result.getOrElse(Seq.empty).asRight[String]
   }

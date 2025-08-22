@@ -102,7 +102,10 @@ class MCPToolRegistry(
   private def refreshToolsFromServer(server: MCPServerConfig, timestamp: Long): Seq[ToolFunction[_, _]] = {
     logger.info(s"Refreshing tools from MCP server: ${server.name}")
     val result = for {
-      client <- Try(getOrCreateClient(server)).toEither.leftMap(_.getMessage)
+      client <- Try(getOrCreateClient(server)).toEither.leftMap { ex =>
+        logger.trace("{}", ex.getStackTrace)
+        ex.getMessage
+      }
       tools  <- client.getTools()
     } yield {
       logger.debug(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
