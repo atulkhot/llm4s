@@ -14,11 +14,11 @@ import scala.util.{ Failure, Success, Try }
  * Supports both 2025-06-18 (Streamable HTTP) and 2024-11-05 (HTTP+SSE) transports.
  */
 class MCPClientImpl(config: MCPServerConfig) extends MCPClient {
-  private val logger                              = LoggerFactory.getLogger(getClass)
+  private val logger                                   = LoggerFactory.getLogger(getClass)
   private[mcp] var transport: Option[MCPTransportImpl] = None
-  private val requestId                           = new AtomicLong(0)
-  private var initialized                         = false
-  private var protocolVersion                     = "2025-06-18" // Updated to latest version
+  private val requestId                                = new AtomicLong(0)
+  private var initialized                              = false
+  private var protocolVersion                          = "2025-06-18" // Updated to latest version
 
   logger.info(s"MCPClientImpl created for server: ${config.name}")
 

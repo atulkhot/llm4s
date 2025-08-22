@@ -69,7 +69,7 @@ class MCPClientImplSpec extends AnyFlatSpec with Matchers with MockFactory with 
 
     // Assert
     result.isRight shouldBe true
-    result.value should be (Seq.empty[ToolFunction[?, ?]])
+    result.value should be(Seq.empty[ToolFunction[?, ?]])
   }
 
   it should "return empty sequence when initialization fails" in {

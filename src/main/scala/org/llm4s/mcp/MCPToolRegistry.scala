@@ -106,7 +106,7 @@ class MCPToolRegistry(
         logger.trace("{}", ex.getStackTrace)
         ex.getMessage
       }
-      tools  <- client.getTools()
+      tools <- client.getTools()
     } yield {
       logger.debug(s"Successfully refreshed ${tools.size} tools from server ${server.name}")
       toolCache.put(server.name, CachedTools(tools, timestamp))
