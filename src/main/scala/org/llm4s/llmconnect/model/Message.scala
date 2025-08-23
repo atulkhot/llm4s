@@ -246,6 +246,15 @@ case class ToolMessage(
 
   override def toString: String = s"${role}(${toolCallId}): ${content}"
 
+  def findToolCallName(contextMessages: Seq[Message]): String = {
+    contextMessages
+      .collect { case am: AssistantMessage => am.toolCalls }
+      .flatten
+      .find(_.id == toolCallId)
+      .map(_.name)
+      .getOrElse("unknown-tool")
+  }
+
   def toSpanEvent(
                    uuid: String,
                    traceId: String,

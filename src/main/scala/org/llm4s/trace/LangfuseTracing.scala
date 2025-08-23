@@ -111,14 +111,8 @@ class LangfuseTracing(
           batchEvents += generationEvent
         case tm: ToolMessage =>
           // Find the corresponding tool call for this tool message
-          val toolCallName = state.conversation.messages
-            .take(idx)
-            .collect { case am: AssistantMessage => am.toolCalls }
-            .flatten
-            .find(_.id == tm.toolCallId)
-            .map(_.name)
-            .getOrElse("unknown-tool")
-
+          val contextMessages = state.conversation.messages.take(idx)
+          val toolCallName = tm.findToolCallName(contextMessages)
           val spanEvent = tm.toSpanEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, toolCallName = toolCallName)
           batchEvents += spanEvent
         case userMsg: UserMessage =>
