@@ -83,29 +83,16 @@ class LangfuseTracing(
       }
       .flatMap(_.toolCalls.headOption.map(_.name))
       .getOrElse("unknown-model")
-    val traceEvent = ujson.Obj(
-      "id"        -> uuid,
-      "timestamp" -> now,
-      "type"      -> "trace-create",
-      "body" -> ujson.Obj(
-        "id"          -> traceId,
-        "timestamp"   -> now,
-        "environment" -> environment,
-        "release"     -> release,
-        "version"     -> version,
-        "public"      -> true,
-        "name"        -> "LLM4S Agent Run",
-        "input"       -> traceInput,
-        "output"      -> traceOutput,
-        "userId"      -> "llm4s-user",
-        "sessionId"   -> s"session-${System.currentTimeMillis()}",
-        "model"       -> modelName,
-        "metadata" -> ujson.Obj(
-          "framework"    -> "llm4s",
-          "messageCount" -> state.conversation.messages.length
-        ),
-        "tags" -> ujson.Arr("llm4s", "agent")
-      )
+    val traceEvent = TraceEvent.createTraceEvent(
+      traceId = traceId,
+      now = now,
+      environment = environment,
+      release = release,
+      version = version,
+      traceInput = traceInput,
+      traceOutput = traceOutput,
+      modelName = modelName,
+      messageCount = state.conversation.messages.length
     )
     batchEvents += traceEvent
 
@@ -115,87 +102,12 @@ class LangfuseTracing(
         case am: AssistantMessage if am.toolCalls.nonEmpty =>
           // Get conversation context leading up to this generation
           val contextMessages = state.conversation.messages.take(idx)
-          val conversationInput = contextMessages.map(msg =>
-            ujson.Obj(
-              "role"    -> msg.role,
-              "content" -> msg.content
-            )
-          )
-
-          // Create proper output with assistant response and tool calls
-          val generationOutput = ujson.Obj(
-            "role"    -> "assistant",
-            "content" -> am.content,
-            "tool_calls" -> ujson.Arr(
-              am.toolCalls.map(tc =>
-                ujson.Obj(
-                  "id"   -> tc.id,
-                  "type" -> "function",
-                  "function" -> ujson.Obj(
-                    "name"      -> tc.name,
-                    "arguments" -> tc.arguments.render()
-                  )
-                )
-              ): _*
-            )
-          )
-
-          val generationEvent = ujson.Obj(
-            "id"        -> uuid,
-            "timestamp" -> now,
-            "type"      -> "generation-create",
-            "body" -> ujson.Obj(
-              "id"              -> s"${traceId}-gen-$idx",
-              "traceId"         -> traceId,
-              "name"            -> s"LLM Generation $idx",
-              "startTime"       -> now,
-              "endTime"         -> now,
-              "input"           -> ujson.Arr(conversationInput: _*),
-              "output"          -> generationOutput,
-              "model"           -> modelName,
-              "modelParameters" -> ujson.Obj(),
-              "metadata" -> ujson.Obj(
-                "messageIndex"  -> idx,
-                "toolCallCount" -> am.toolCalls.length
-              )
-            )
-          )
+          val generationEvent = am.toGenerationEventWithTools(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
           batchEvents += generationEvent
         case am: AssistantMessage =>
           // Handle regular assistant messages without tool calls
           val contextMessages = state.conversation.messages.take(idx)
-          val conversationInput = contextMessages.map(msg =>
-            ujson.Obj(
-              "role"    -> msg.role,
-              "content" -> msg.content
-            )
-          )
-
-          val generationOutput = ujson.Obj(
-            "role"    -> "assistant",
-            "content" -> am.content
-          )
-
-          val generationEvent = ujson.Obj(
-            "id"        -> uuid,
-            "timestamp" -> now,
-            "type"      -> "generation-create",
-            "body" -> ujson.Obj(
-              "id"              -> s"${traceId}-gen-$idx",
-              "traceId"         -> traceId,
-              "name"            -> s"LLM Generation $idx",
-              "startTime"       -> now,
-              "endTime"         -> now,
-              "input"           -> ujson.Arr(conversationInput: _*),
-              "output"          -> generationOutput,
-              "model"           -> modelName,
-              "modelParameters" -> ujson.Obj(),
-              "metadata" -> ujson.Obj(
-                "messageIndex"  -> idx,
-                "toolCallCount" -> 0
-              )
-            )
-          )
+          val generationEvent = am.toGenerationEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
           batchEvents += generationEvent
         case tm: ToolMessage =>
           // Find the corresponding tool call for this tool message
@@ -207,81 +119,16 @@ class LangfuseTracing(
             .map(_.name)
             .getOrElse("unknown-tool")
 
-          val spanEvent = ujson.Obj(
-            "id"        -> uuid,
-            "timestamp" -> now,
-            "type"      -> "span-create",
-            "body" -> ujson.Obj(
-              "id"        -> s"${traceId}-span-$idx",
-              "traceId"   -> traceId,
-              "name"      -> s"Tool: $toolCallName",
-              "startTime" -> now,
-              "endTime"   -> now,
-              "input" -> ujson.Obj(
-                "toolCallId" -> tm.toolCallId,
-                "toolName"   -> toolCallName
-              ),
-              "output" -> ujson.Obj(
-                "result" -> tm.content
-              ),
-              "metadata" -> ujson.Obj(
-                "role"       -> tm.role,
-                "toolCallId" -> tm.toolCallId,
-                "toolName"   -> toolCallName
-              )
-            )
-          )
+          val spanEvent = tm.toSpanEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, toolCallName = toolCallName)
           batchEvents += spanEvent
         case userMsg: UserMessage =>
-          val eventEvent = ujson.Obj(
-            "id"        -> uuid,
-            "timestamp" -> now,
-            "type"      -> "event-create",
-            "body" -> ujson.Obj(
-              "id"        -> s"${traceId}-event-$idx",
-              "traceId"   -> traceId,
-              "name"      -> s"User Input $idx",
-              "startTime" -> now,
-              "input"     -> ujson.Obj("content" -> userMsg.content),
-              "metadata" -> ujson.Obj(
-                "role" -> userMsg.role
-              )
-            )
-          )
+          val eventEvent = userMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
           batchEvents += eventEvent
         case sysMsg: SystemMessage =>
-          val eventEvent = ujson.Obj(
-            "id"        -> uuid,
-            "timestamp" -> now,
-            "type"      -> "event-create",
-            "body" -> ujson.Obj(
-              "id"        -> s"${traceId}-event-$idx",
-              "traceId"   -> traceId,
-              "name"      -> s"System Message $idx",
-              "startTime" -> now,
-              "input"     -> ujson.Obj("content" -> sysMsg.content),
-              "metadata" -> ujson.Obj(
-                "role" -> sysMsg.role
-              )
-            )
-          )
+          val eventEvent = sysMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
           batchEvents += eventEvent
         case _ =>
-          val eventEvent = ujson.Obj(
-            "id"        -> uuid,
-            "timestamp" -> now,
-            "type"      -> "event-create",
-            "body" -> ujson.Obj(
-              "id"        -> s"${traceId}-event-$idx",
-              "traceId"   -> traceId,
-              "name"      -> s"Message $idx: ${msg.role}",
-              "startTime" -> now,
-              "input"     -> ujson.Obj("content" -> msg.content),
-              "metadata" -> ujson.Obj(
-                "role" -> msg.role
-              )
-            )
-          )
+          val eventEvent = msg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
           batchEvents += eventEvent
       }
     }
