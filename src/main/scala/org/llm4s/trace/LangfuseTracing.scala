@@ -75,14 +75,14 @@ class LangfuseTracing(
     val batchEvents = scala.collection.mutable.ArrayBuffer[ujson.Obj]()
 
     // Trace-create event
-    val traceInput  = if (state.userQuery.nonEmpty) state.userQuery else "No user query"
-    val traceOutput = state.conversation.messages.lastOption.map(_.content).filter(_.nonEmpty).getOrElse("No output")
     val modelName = state.conversation.messages
       .collectFirst {
         case am: AssistantMessage if am.toolCalls.nonEmpty => am
       }
       .flatMap(_.toolCalls.headOption.map(_.name))
       .getOrElse("unknown-model")
+    val traceInput  = if (state.userQuery.nonEmpty) state.userQuery else "No user query"
+    val traceOutput = state.conversation.messages.lastOption.map(_.content).filter(_.nonEmpty).getOrElse("No output")
     val traceEvent = TraceEvent.createTraceEvent(
       traceId = traceId,
       now = now,

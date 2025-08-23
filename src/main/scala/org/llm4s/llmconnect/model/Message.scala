@@ -42,7 +42,7 @@ sealed trait Message {
 case class UserMessage(content: String) extends Message {
   val role = "user"
 
-  def toEventCreate(
+  override def toEventCreate(
                      uuid: String,
                      traceId: String,
                      idx: Int,
@@ -80,7 +80,7 @@ case class UserMessage(content: String) extends Message {
 case class SystemMessage(content: String) extends Message {
   val role = "system"
 
-  def toEventCreate(
+  override def toEventCreate(
                      uuid: String,
                      traceId: String,
                      idx: Int,
