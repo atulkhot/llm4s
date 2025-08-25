@@ -2,13 +2,13 @@ package org.llm4s.trace
 
 import org.llm4s.agent.AgentState
 import org.llm4s.config.EnvLoader
-import org.llm4s.llmconnect.model.{ AssistantMessage, SystemMessage, ToolMessage, UserMessage }
+import org.llm4s.llmconnect.model.{AssistantMessage, Message, SystemMessage, ToolMessage, UserMessage}
 import org.slf4j.LoggerFactory
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 
 class LangfuseTracing(
   langfuseUrl: String = EnvLoader.getOrElse("LANGFUSE_URL", "https://cloud.langfuse.com/api/public/ingestion"),
@@ -68,6 +68,15 @@ class LangfuseTracing(
     }
   }
 
+  private def determineModelName(seqOfMessages: Seq[Message]): String = {
+    seqOfMessages
+      .collectFirst {
+        case am: AssistantMessage if am.toolCalls.nonEmpty => am
+      }
+      .flatMap(_.toolCalls.headOption.map(_.name))
+      .getOrElse("unknown-model")
+  }
+
   override def traceAgentState(state: AgentState): Unit = {
     logger.info("[LangfuseTracing] Exporting agent state to Langfuse.")
     val traceId     = uuid
@@ -75,12 +84,7 @@ class LangfuseTracing(
 
     val seqOfMessages = state.conversation.messages
     // Trace-create event
-    val modelName = seqOfMessages
-      .collectFirst {
-        case am: AssistantMessage if am.toolCalls.nonEmpty => am
-      }
-      .flatMap(_.toolCalls.headOption.map(_.name))
-      .getOrElse("unknown-model")
+    val modelName = determineModelName(seqOfMessages)
     val traceInput  = if (state.userQuery.nonEmpty) state.userQuery else "No user query"
     val traceOutput = seqOfMessages.lastOption.map(_.content).filter(_.nonEmpty).getOrElse("No output")
     val traceEvent = TraceEvent.createTraceEvent(traceId = traceId, now = now, environment = environment, release = release,
@@ -90,14 +94,15 @@ class LangfuseTracing(
     // Observation events for each message
     val allBatchEvents = seqOfMessages.zipWithIndex.foldLeft(batchEvents :+ traceEvent) { case (acc, (msg, idx)) =>
       val event = msg match {
-        case am: AssistantMessage if am.toolCalls.nonEmpty =>
+        case am: AssistantMessage  =>
           // Get conversation context leading up to this generation
           val contextMessages = seqOfMessages.take(idx)
-          am.toGenerationEventWithTools(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
-        case am: AssistantMessage =>
-          // Handle regular assistant messages without tool calls
-          val contextMessages = seqOfMessages.take(idx)
-          am.toGenerationEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
+          if (am.toolCalls.nonEmpty)
+            am.toGenerationEventWithTools(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName,
+              contextMessages = contextMessages)
+          else
+            am.toGenerationEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName,
+              contextMessages = contextMessages)
         case tm: ToolMessage =>
           // Find the corresponding tool call for this tool message
           val contextMessages = seqOfMessages.take(idx)
@@ -108,9 +113,9 @@ class LangfuseTracing(
         case sysMsg: SystemMessage =>
           sysMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
       }
-      acc :+ event
+      event :: acc
     }
-    sendBatch(allBatchEvents)
+    sendBatch(allBatchEvents.reverse)
   }
 
   override def traceEvent(event: String): Unit = {
