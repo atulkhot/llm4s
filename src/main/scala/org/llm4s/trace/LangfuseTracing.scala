@@ -97,7 +97,7 @@ class LangfuseTracing(
     batchEvents += traceEvent
 
     // Observation events for each message
-    state.conversation.messages.zipWithIndex.foreach { case (msg, idx) =>
+    state.conversation.messages.zipWithIndex.foldLeft(batchEvents) { case (_, (msg, idx)) =>
       msg match {
         case am: AssistantMessage if am.toolCalls.nonEmpty =>
           // Get conversation context leading up to this generation
