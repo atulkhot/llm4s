@@ -73,44 +73,36 @@ class LangfuseTracing(
     val traceId     = uuid
     val now         = nowIso
 
+    val seqOfMessages = state.conversation.messages
     // Trace-create event
-    val modelName = state.conversation.messages
+    val modelName = seqOfMessages
       .collectFirst {
         case am: AssistantMessage if am.toolCalls.nonEmpty => am
       }
       .flatMap(_.toolCalls.headOption.map(_.name))
       .getOrElse("unknown-model")
     val traceInput  = if (state.userQuery.nonEmpty) state.userQuery else "No user query"
-    val traceOutput = state.conversation.messages.lastOption.map(_.content).filter(_.nonEmpty).getOrElse("No output")
-    val traceEvent = TraceEvent.createTraceEvent(
-      traceId = traceId,
-      now = now,
-      environment = environment,
-      release = release,
-      version = version,
-      traceInput = traceInput,
-      traceOutput = traceOutput,
-      modelName = modelName,
-      messageCount = state.conversation.messages.length
-    )
+    val traceOutput = seqOfMessages.lastOption.map(_.content).filter(_.nonEmpty).getOrElse("No output")
+    val traceEvent = TraceEvent.createTraceEvent(traceId = traceId, now = now, environment = environment, release = release,
+      version = version, traceInput = traceInput, traceOutput = traceOutput, modelName = modelName, messageCount = seqOfMessages.length)
     val batchEvents = List(traceEvent)
 
     // Observation events for each message
-    val allBatchEvents = state.conversation.messages.zipWithIndex.foldLeft(batchEvents :+ traceEvent) { case (acc, (msg, idx)) =>
+    val allBatchEvents = seqOfMessages.zipWithIndex.foldLeft(batchEvents :+ traceEvent) { case (acc, (msg, idx)) =>
       msg match {
         case am: AssistantMessage if am.toolCalls.nonEmpty =>
           // Get conversation context leading up to this generation
-          val contextMessages = state.conversation.messages.take(idx)
+          val contextMessages = seqOfMessages.take(idx)
           val generationEvent = am.toGenerationEventWithTools(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
           acc :+ generationEvent
         case am: AssistantMessage =>
           // Handle regular assistant messages without tool calls
-          val contextMessages = state.conversation.messages.take(idx)
+          val contextMessages = seqOfMessages.take(idx)
           val generationEvent = am.toGenerationEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
           acc :+ generationEvent
         case tm: ToolMessage =>
           // Find the corresponding tool call for this tool message
-          val contextMessages = state.conversation.messages.take(idx)
+          val contextMessages = seqOfMessages.take(idx)
           val toolCallName = tm.findToolCallName(contextMessages)
           val spanEvent = tm.toSpanEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, toolCallName = toolCallName)
           acc :+ spanEvent
