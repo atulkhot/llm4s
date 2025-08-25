@@ -72,7 +72,6 @@ class LangfuseTracing(
     logger.info("[LangfuseTracing] Exporting agent state to Langfuse.")
     val traceId     = uuid
     val now         = nowIso
-    val batchEvents = scala.collection.mutable.ArrayBuffer[ujson.Obj]()
 
     // Trace-create event
     val modelName = state.conversation.messages
@@ -94,39 +93,39 @@ class LangfuseTracing(
       modelName = modelName,
       messageCount = state.conversation.messages.length
     )
-    batchEvents += traceEvent
+    val batchEvents = List(traceEvent)
 
     // Observation events for each message
-    state.conversation.messages.zipWithIndex.foldLeft(batchEvents) { case (_, (msg, idx)) =>
+    val allBatchEvents = state.conversation.messages.zipWithIndex.foldLeft(batchEvents :+ traceEvent) { case (_, (msg, idx)) =>
       msg match {
         case am: AssistantMessage if am.toolCalls.nonEmpty =>
           // Get conversation context leading up to this generation
           val contextMessages = state.conversation.messages.take(idx)
           val generationEvent = am.toGenerationEventWithTools(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
-          batchEvents += generationEvent
+          batchEvents :+ generationEvent
         case am: AssistantMessage =>
           // Handle regular assistant messages without tool calls
           val contextMessages = state.conversation.messages.take(idx)
           val generationEvent = am.toGenerationEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, modelName = modelName, contextMessages = contextMessages)
-          batchEvents += generationEvent
+          batchEvents :+ generationEvent
         case tm: ToolMessage =>
           // Find the corresponding tool call for this tool message
           val contextMessages = state.conversation.messages.take(idx)
           val toolCallName = tm.findToolCallName(contextMessages)
           val spanEvent = tm.toSpanEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, toolCallName = toolCallName)
-          batchEvents += spanEvent
+          batchEvents :+ spanEvent
         case userMsg: UserMessage =>
           val eventEvent = userMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
-          batchEvents += eventEvent
+          batchEvents :+ eventEvent
         case sysMsg: SystemMessage =>
           val eventEvent = sysMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
-          batchEvents += eventEvent
+          batchEvents :+ eventEvent
         case _ =>
           val eventEvent = msg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
-          batchEvents += eventEvent
+          batchEvents :+ eventEvent
       }
     }
-    sendBatch(batchEvents.toSeq)
+    sendBatch(allBatchEvents)
   }
 
   override def traceEvent(event: String): Unit = {
