@@ -8,6 +8,29 @@ sealed trait Message {
   def content: String
 
   override def toString: String = s"${role}: ${content}"
+
+  def toEventCreate(
+    uuid: String,
+    traceId: String,
+    idx: Int,
+    now: String
+  ): ujson.Obj =
+    ujson.Obj(
+      "id"        -> uuid,
+      "timestamp" -> now,
+      "type"      -> "event-create",
+      "body" -> ujson.Obj(
+        "id"        -> s"${traceId}-event-$idx",
+        "traceId"   -> traceId,
+        "name"      -> s"Message $idx: $role",
+        "startTime" -> now,
+        "input"     -> ujson.Obj("content" -> content),
+        "metadata" -> ujson.Obj(
+          "role" -> role
+        )
+      )
+    )
+
 }
 
 /**
@@ -17,6 +40,29 @@ sealed trait Message {
  */
 case class UserMessage(content: String) extends Message {
   val role = "user"
+
+  override def toEventCreate(
+    uuid: String,
+    traceId: String,
+    idx: Int,
+    now: String
+  ): ujson.Obj =
+    ujson.Obj(
+      "id"        -> uuid,
+      "timestamp" -> now,
+      "type"      -> "event-create",
+      "body" -> ujson.Obj(
+        "id"        -> s"${traceId}-event-$idx",
+        "traceId"   -> traceId,
+        "name"      -> s"User Input $idx",
+        "startTime" -> now,
+        "input"     -> ujson.Obj("content" -> content),
+        "metadata" -> ujson.Obj(
+          "role" -> role
+        )
+      )
+    )
+
 }
 
 /**
@@ -31,6 +77,29 @@ case class UserMessage(content: String) extends Message {
  */
 case class SystemMessage(content: String) extends Message {
   val role = "system"
+
+  override def toEventCreate(
+    uuid: String,
+    traceId: String,
+    idx: Int,
+    now: String
+  ): ujson.Obj =
+    ujson.Obj(
+      "id"        -> uuid,
+      "timestamp" -> now,
+      "type"      -> "event-create",
+      "body" -> ujson.Obj(
+        "id"        -> s"${traceId}-event-$idx",
+        "traceId"   -> traceId,
+        "name"      -> s"System Message $idx",
+        "startTime" -> now,
+        "input"     -> ujson.Obj("content" -> content),
+        "metadata" -> ujson.Obj(
+          "role" -> role
+        )
+      )
+    )
+
 }
 
 object AssistantMessage {
@@ -61,6 +130,103 @@ case class AssistantMessage(
 
     s"${role}: ${content}${toolCallsStr}"
   }
+
+  def toGenerationEvent(
+    uuid: String,
+    traceId: String,
+    idx: Int,
+    now: String,
+    modelName: String,
+    contextMessages: Seq[Message]
+  ): ujson.Obj = {
+    val conversationInput = contextMessages.map(msg =>
+      ujson.Obj(
+        "role"    -> msg.role,
+        "content" -> msg.content
+      )
+    )
+
+    val generationOutput = ujson.Obj(
+      "role"    -> "assistant",
+      "content" -> content
+    )
+
+    ujson.Obj(
+      "id"        -> uuid,
+      "timestamp" -> now,
+      "type"      -> "generation-create",
+      "body" -> ujson.Obj(
+        "id"              -> s"${traceId}-gen-$idx",
+        "traceId"         -> traceId,
+        "name"            -> s"LLM Generation $idx",
+        "startTime"       -> now,
+        "endTime"         -> now,
+        "input"           -> ujson.Arr(conversationInput: _*),
+        "output"          -> generationOutput,
+        "model"           -> modelName,
+        "modelParameters" -> ujson.Obj(),
+        "metadata" -> ujson.Obj(
+          "messageIndex"  -> idx,
+          "toolCallCount" -> 0
+        )
+      )
+    )
+  }
+
+  def toGenerationEventWithTools(
+    uuid: String,
+    traceId: String,
+    idx: Int,
+    now: String,
+    modelName: String,
+    contextMessages: Seq[Message]
+  ): ujson.Obj = {
+    val conversationInput = contextMessages.map(msg =>
+      ujson.Obj(
+        "role"    -> msg.role,
+        "content" -> msg.content
+      )
+    )
+
+    val generationOutput = ujson.Obj(
+      "role"    -> "assistant",
+      "content" -> content,
+      "tool_calls" -> ujson.Arr(
+        toolCalls.map(tc =>
+          ujson.Obj(
+            "id"   -> tc.id,
+            "type" -> "function",
+            "function" -> ujson.Obj(
+              "name"      -> tc.name,
+              "arguments" -> tc.arguments.render()
+            )
+          )
+        ): _*
+      )
+    )
+
+    ujson.Obj(
+      "id"        -> uuid,
+      "timestamp" -> now,
+      "type"      -> "generation-create",
+      "body" -> ujson.Obj(
+        "id"              -> s"${traceId}-gen-$idx",
+        "traceId"         -> traceId,
+        "name"            -> s"LLM Generation $idx",
+        "startTime"       -> now,
+        "endTime"         -> now,
+        "input"           -> ujson.Arr(conversationInput: _*),
+        "output"          -> generationOutput,
+        "model"           -> modelName,
+        "modelParameters" -> ujson.Obj(),
+        "metadata" -> ujson.Obj(
+          "messageIndex"  -> idx,
+          "toolCallCount" -> toolCalls.length
+        )
+      )
+    )
+  }
+
 }
 
 /**
@@ -76,6 +242,47 @@ case class ToolMessage(
   val role = "tool"
 
   override def toString: String = s"${role}(${toolCallId}): ${content}"
+
+  def findToolCallName(contextMessages: Seq[Message]): String =
+    contextMessages
+      .collect { case am: AssistantMessage => am.toolCalls }
+      .flatten
+      .find(_.id == toolCallId)
+      .map(_.name)
+      .getOrElse("unknown-tool")
+
+  def toSpanEvent(
+    uuid: String,
+    traceId: String,
+    idx: Int,
+    now: String,
+    toolCallName: String
+  ): ujson.Obj =
+    ujson.Obj(
+      "id"        -> uuid,
+      "timestamp" -> now,
+      "type"      -> "span-create",
+      "body" -> ujson.Obj(
+        "id"        -> s"${traceId}-span-$idx",
+        "traceId"   -> traceId,
+        "name"      -> s"Tool: $toolCallName",
+        "startTime" -> now,
+        "endTime"   -> now,
+        "input" -> ujson.Obj(
+          "toolCallId" -> toolCallId,
+          "toolName"   -> toolCallName
+        ),
+        "output" -> ujson.Obj(
+          "result" -> content
+        ),
+        "metadata" -> ujson.Obj(
+          "role"       -> role,
+          "toolCallId" -> toolCallId,
+          "toolName"   -> toolCallName
+        )
+      )
+    )
+
 }
 
 /**
