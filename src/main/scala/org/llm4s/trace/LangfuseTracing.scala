@@ -2,10 +2,19 @@ package org.llm4s.trace
 
 import org.llm4s.agent.AgentState
 import org.llm4s.config.{ ConfigKeys, ConfigReader }
-import org.llm4s.llmconnect.model.{ AssistantMessage, MessageRole, SystemMessage, ToolMessage, UserMessage }
+import org.llm4s.llmconnect.model.{
+  AssistantMessage,
+  Message,
+  MessageRole,
+  SystemMessage,
+  ToolMessage,
+  TraceHelper,
+  UserMessage
+}
 import org.slf4j.LoggerFactory
 import ConfigKeys._
 import org.llm4s.config.DefaultConfig._
+
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -17,7 +26,8 @@ class LangfuseTracing(
   secretKey: String,
   environment: String,
   release: String,
-  version: String
+  version: String,
+  batchSender: LangfuseBatchSender = new DefaultLangfuseBatchSender()
 ) extends Tracing {
 
   // Factory to build from any ConfigReader without internal fallbacks
@@ -77,6 +87,7 @@ class LangfuseTracing(
     sendBatch(allBatchEvents.reverse)
   }
 
+  // Get conversation context leading up to this generation
   private[trace] def createEvent(
     msg: Message,
     seqOfMessages: Seq[Message],
@@ -84,38 +95,16 @@ class LangfuseTracing(
     now: String,
     traceId: String,
     modelName: String
-  ): ujson.Obj = msg match {
-    case am: AssistantMessage =>
-      // Get conversation context leading up to this generation
-      val contextMessages = seqOfMessages.take(idx)
-      if (am.toolCalls.nonEmpty)
-        am.toGenerationEventWithTools(
-          uuid = uuid,
-          traceId = traceId,
-          idx = idx,
-          now = now,
-          modelName = modelName,
-          contextMessages = contextMessages
-        )
-      else
-        am.toGenerationEvent(
-          uuid = uuid,
-          traceId = traceId,
-          idx = idx,
-          now = now,
-          modelName = modelName,
-          contextMessages = contextMessages
-        )
-    case tm: ToolMessage =>
-      // Find the corresponding tool call for this tool message
-      val contextMessages = seqOfMessages.take(idx)
-      val toolCallName    = tm.findToolCallName(contextMessages)
-      tm.toSpanEvent(uuid = uuid, traceId = traceId, idx = idx, now = now, toolCallName = toolCallName)
-    case userMsg: UserMessage =>
-      userMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
-    case sysMsg: SystemMessage =>
-      sysMsg.toEventCreate(uuid = uuid, traceId = traceId, idx = idx, now = now)
-  }
+  ): ujson.Obj =
+    TraceHelper.createEvent(
+      msg,
+      uuid = uuid,
+      traceId = traceId,
+      idx = idx,
+      now = now,
+      modelName = modelName,
+      contextMessages = seqOfMessages.take(idx)
+    )
 
   override def traceEvent(event: String): Unit = {
     logger.info(s"[LangfuseTracing] Event: $event")
