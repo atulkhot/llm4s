@@ -8,7 +8,6 @@ object TraceHelper {
     eventType: String,
     traceId: String,
     idx: Int,
-    content: String,
     input: ujson.Obj,
     meta: ujson.Obj,
     output: Option[ujson.Obj]
@@ -60,7 +59,6 @@ object TraceHelper {
         "event-create",
         traceId,
         idx,
-        content,
         ujson.Obj("content" -> content),
         ujson.Obj("role"    -> um.role.name),
         None
@@ -73,7 +71,6 @@ object TraceHelper {
         "event-create",
         traceId,
         idx,
-        content,
         ujson.Obj("content" -> content),
         ujson.Obj("role"    -> sys.role.name),
         None
@@ -169,7 +166,6 @@ object TraceHelper {
         "span-create",
         traceId,
         idx,
-        content,
         ujson.Obj(
           "toolCallId" -> toolCallId,
           "toolName"   -> toolCallName

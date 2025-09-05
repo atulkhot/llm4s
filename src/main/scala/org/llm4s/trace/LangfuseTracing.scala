@@ -1,24 +1,15 @@
 package org.llm4s.trace
 
 import org.llm4s.agent.AgentState
-import org.llm4s.config.{ ConfigKeys, ConfigReader }
-import org.llm4s.llmconnect.model.{
-  AssistantMessage,
-  Message,
-  MessageRole,
-  SystemMessage,
-  ToolMessage,
-  TraceHelper,
-  UserMessage
-}
-import org.slf4j.LoggerFactory
-import ConfigKeys._
+import org.llm4s.config.ConfigKeys._
+import org.llm4s.config.ConfigReader
 import org.llm4s.config.DefaultConfig._
+import org.llm4s.llmconnect.model.{ AssistantMessage, Message, TraceHelper }
+import org.slf4j.LoggerFactory
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import scala.util.{ Failure, Success, Try }
 
 class LangfuseTracing(
   langfuseUrl: String,
