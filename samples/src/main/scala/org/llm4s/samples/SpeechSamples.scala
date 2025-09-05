@@ -1,19 +1,26 @@
 package org.llm4s.samples
 
+import cats.implicits.*
 import org.llm4s.speech.AudioInput
 import org.llm4s.speech.stt.{STTOptions, VoskSpeechToText, WhisperSpeechToText}
 import org.llm4s.speech.tts.{TTSOptions, Tacotron2TextToSpeech}
 import org.llm4s.speech.util.PlatformCommands
+import org.slf4j.LoggerFactory
 
-import java.nio.file.{Files, Path, Paths}
 import java.io.{DataOutputStream, FileOutputStream}
+import java.nio.file.{Files, Path, Paths}
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Try, Using}
 
 object SpeechSamples {
 
+  private val logger = LoggerFactory.getLogger(getClass)
+
   implicit class RichDataOutputStream(dos: DataOutputStream) {
     def writeIt(s: String): Unit = dos.writeBytes(s)
+
     def writeIt(i: Int): Unit = writeLittleEndianInt(dos, i)
+
     def writeIt(s: Short): Unit = writeLittleEndianShort(dos, s)
   }
 
@@ -65,12 +72,16 @@ object SpeechSamples {
       path
     }
 
-  def createTestWavFile(): Try[java.nio.file.Path] = {
+  def createTestWavFile(): Either[String, java.nio.file.Path] = {
     for {
       file <- Try(Files.createTempFile("whisper-test", ".wav"))
       _ <- populateFile(file)
-    } yield (file)
-  }
+    } yield file
+  }.toEither
+    .leftMap(_.getMessage)
+    .tap { x =>
+      x.fold(err => logger.error(err), v => logger.trace("Created wave file {} successfully", v))
+    }
 
   def createToneWavFile(): java.nio.file.Path = {
     val testFile = Files.createTempFile("whisper-tone", ".wav")
@@ -80,15 +91,15 @@ object SpeechSamples {
     val dos = new DataOutputStream(fos)
 
     try {
-      val sampleRate     = 16000 // Higher sample rate for better quality
-      val channels       = 1
-      val bitsPerSample  = 16
+      val sampleRate = 16000 // Higher sample rate for better quality
+      val channels = 1
+      val bitsPerSample = 16
       val bytesPerSample = bitsPerSample / 8
-      val blockAlign     = channels * bytesPerSample
-      val byteRate       = sampleRate * blockAlign
-      val duration       = 2     // 2 seconds
-      val dataSize       = sampleRate * duration * channels * bytesPerSample
-      val fileSize       = 36 + dataSize
+      val blockAlign = channels * bytesPerSample
+      val byteRate = sampleRate * blockAlign
+      val duration = 2 // 2 seconds
+      val dataSize = sampleRate * duration * channels * bytesPerSample
+      val fileSize = 36 + dataSize
 
       // WAV header
       dos.writeBytes("RIFF")
@@ -111,7 +122,7 @@ object SpeechSamples {
 
       // Generate a 440Hz sine wave tone
       val frequency = 440.0 // A note
-      val amplitude = 0.3   // Reduce amplitude to avoid clipping
+      val amplitude = 0.3 // Reduce amplitude to avoid clipping
 
       for (i <- 0 until sampleRate * duration) {
         val sample = (Math.sin(2 * Math.PI * frequency * i / sampleRate) * amplitude * 32767).toInt
@@ -134,15 +145,15 @@ object SpeechSamples {
     val dos = new DataOutputStream(fos)
 
     try {
-      val sampleRate     = 16000
-      val channels       = 1
-      val bitsPerSample  = 16
+      val sampleRate = 16000
+      val channels = 1
+      val bitsPerSample = 16
       val bytesPerSample = bitsPerSample / 8
-      val blockAlign     = channels * bytesPerSample
-      val byteRate       = sampleRate * blockAlign
-      val duration       = 3 // 3 seconds
-      val dataSize       = sampleRate * duration * channels * bytesPerSample
-      val fileSize       = 36 + dataSize
+      val blockAlign = channels * bytesPerSample
+      val byteRate = sampleRate * blockAlign
+      val duration = 3 // 3 seconds
+      val dataSize = sampleRate * duration * channels * bytesPerSample
+      val fileSize = 36 + dataSize
 
       // WAV header
       dos.writeBytes("RIFF")
@@ -164,14 +175,14 @@ object SpeechSamples {
       writeLittleEndianInt(dos, dataSize)
 
       // Generate a modulated tone that might be more speech-like
-      val baseFreq  = 200.0 // Lower frequency, more speech-like
+      val baseFreq = 200.0 // Lower frequency, more speech-like
       val amplitude = 0.2
 
       for (i <- 0 until sampleRate * duration) {
         val time = i.toDouble / sampleRate
         // Create a modulated pattern with varying frequency
         val modFreq = baseFreq + 50 * Math.sin(2 * Math.PI * 2 * time) // Frequency modulation
-        val sample  = (Math.sin(2 * Math.PI * modFreq * time) * amplitude * 32767).toInt
+        val sample = (Math.sin(2 * Math.PI * modFreq * time) * amplitude * 32767).toInt
         writeLittleEndianShort(dos, sample)
       }
 
@@ -230,8 +241,8 @@ object SpeechSamples {
 
     println("\n--- Creating Test Audio Files ---")
     // Create all test files
-    val silenceWavFile    = createTestWavFile().get
-    val toneWavFile       = createToneWavFile()
+    val silenceWavFile = createTestWavFile().getOrElse(throw new RuntimeException("Failed"))
+    val toneWavFile = createToneWavFile()
     val speechLikeWavFile = createSpeechLikeWavFile()
 
     println(
