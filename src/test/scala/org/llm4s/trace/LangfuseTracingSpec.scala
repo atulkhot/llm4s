@@ -105,11 +105,6 @@ private class MockLangfuseTracing(configReader: ConfigReader)
     extends LangfuseTracing(
       configReader
     ) {
-  private var sentBatchEvents = Seq.empty[ujson.Obj]
-
-  override protected[trace] def sendBatch(events: Seq[ujson.Obj]): Unit =
-    sentBatchEvents = events
-
   def testCreateEvent(
     msg: Message,
     messages: Seq[Message],
