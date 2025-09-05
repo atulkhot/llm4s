@@ -10,6 +10,12 @@ import java.io.{ FileOutputStream, DataOutputStream }
 
 object SpeechSamples {
 
+  implicit class RichDataOutputStream(dos: DataOutputStream) {
+    def write(s: String): Unit = dos.writeBytes(s)
+    def write(i: Int): Unit = writeLittleEndianInt(dos, i)
+    def write(s: Short): Unit = writeLittleEndianShort(dos, s)
+  }
+
   def createTestWavFile(): java.nio.file.Path = {
     val testFile = Files.createTempFile("whisper-test", ".wav")
 
@@ -29,27 +35,27 @@ object SpeechSamples {
       val fileSize       = 36 + dataSize                          // 36 bytes header + data
 
       // WAV header
-      dos.writeBytes("RIFF")
-      writeLittleEndianInt(dos, fileSize)
-      dos.writeBytes("WAVE")
+      dos.write("RIFF")
+      dos.write(fileSize)
+      dos.write("WAVE")
 
       // fmt chunk
-      dos.writeBytes("fmt ")
-      writeLittleEndianInt(dos, 16)              // fmt chunk size
-      writeLittleEndianShort(dos, 1)             // Audio format (PCM)
-      writeLittleEndianShort(dos, channels)      // Channels (mono)
-      writeLittleEndianInt(dos, sampleRate)      // Sample rate
-      writeLittleEndianInt(dos, byteRate)        // Byte rate
-      writeLittleEndianShort(dos, blockAlign)    // Block align
-      writeLittleEndianShort(dos, bitsPerSample) // Bits per sample
+      dos.write("fmt ")
+      dos.write(16)               // fmt chunk size
+      dos.write(1.toShort)        // Audio format (PCM)
+      dos.write(channels.toShort) // Audio format (PCM)
+      dos.write(sampleRate)    // Sample rate
+      dos.write(byteRate)         // Byte rate
+      dos.write(blockAlign.toShort)    // Block align
+      dos.write(bitsPerSample.toShort) // Bits per sample
 
       // data chunk
-      dos.writeBytes("data")
-      writeLittleEndianInt(dos, dataSize) // Data size
+      dos.write("data")
+      dos.write(dataSize) // Data size
 
       // Write 1 second of silence
       for (_ <- 0 until sampleRate)
-        writeLittleEndianShort(dos, 0) // 16-bit silence
+        dos.write(0) // 16-bit silence
 
     } finally {
       dos.close()
