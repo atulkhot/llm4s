@@ -35,17 +35,8 @@ object SpeechSamples {
     }
   }
 
-  def makePath(filename: String, fileExt: String): Try[Path] = Try {
+  private def makePath(filename: String, fileExt: String): Try[Path] = Try {
     Files.createTempFile(filename, fileExt)
-  }
-
-  def openFileForWriting(path: Path): Try[DataOutputStream] = {
-    Using.Manager { use =>
-      val fos = use(new FileOutputStream(path.toFile))
-      val dos = use(new DataOutputStream(fos))
-
-      dos
-    }
   }
 
   def createTestWavFile(): Try[java.nio.file.Path] = {
@@ -55,30 +46,33 @@ object SpeechSamples {
     val bytesPerSample = bitsPerSample / 8
     val blockAlign = channels * bytesPerSample
     val byteRate = sampleRate * blockAlign
-    val dataSize = sampleRate * channels * bytesPerSample // 1 second of audio
-    val fileSize = 36 + dataSize // 36 bytes header + data
+    val dataSize = sampleRate * channels * bytesPerSample
+    val fileSize = 36 + dataSize
 
     for {
       path <- makePath("whisper-test", ".wav")
-      dos <- openFileForWriting(path)
-      // Write WAV header
-      _ <-  dos.writeIt("RIFF")
-      _ <- dos.writeIt(fileSize)
-      _ <- dos.writeIt("WAVE")
-      // Write fmt chunk
-      _ <-  dos.writeIt("fmt ")
-      _ <-  dos.writeIt(16)               // fmt chunk size
-      _ <-  dos.writeIt(1.toShort)        // Audio format (PCM)
-      _ <-  dos.writeIt(channels.toShort) // Channels (mono)
-      _ <-  dos.writeIt(sampleRate)               // Sample rate
-      _ <-  dos.writeIt(byteRate)          // Byte rate
-      _ <-  dos.writeIt(blockAlign.toShort) // Block align
-      _ <-  dos.writeIt(bitsPerSample.toShort) // Bits per sample
-      // data chunk
-      _ <-  dos.writeIt("data")
-      _ <-  dos.writeIt(dataSize) // Data size
-      // Write 1 second of silence
-      _ <- dos.writeZeros(0 until sampleRate)
+      _ <- Using.Manager { use =>
+        val fos = use(new FileOutputStream(path.toFile))
+        val dos = use(new DataOutputStream(fos))
+        val richDos = new RichDataOutputStream(dos)
+
+        for {
+          _ <- richDos.writeIt("RIFF")
+          _ <- richDos.writeIt(fileSize)
+          _ <- richDos.writeIt("WAVE")
+          _ <- richDos.writeIt("fmt ")
+          _ <- richDos.writeIt(16)
+          _ <- richDos.writeIt(1.toShort)
+          _ <- richDos.writeIt(channels.toShort)
+          _ <- richDos.writeIt(sampleRate)
+          _ <- richDos.writeIt(byteRate)
+          _ <- richDos.writeIt(blockAlign.toShort)
+          _ <- richDos.writeIt(bitsPerSample.toShort)
+          _ <- richDos.writeIt("data")
+          _ <- richDos.writeIt(dataSize)
+          _ <- richDos.writeZeros(0 until sampleRate)
+        } yield ()
+      }
     } yield path
   }
 
