@@ -130,23 +130,6 @@ object SpeechSamples {
         } yield ()
       }
     } yield path
-
-
-    //      // Generate a 440Hz sine wave tone
-    //      val frequency = 440.0 // A note
-    //      val amplitude = 0.3   // Reduce amplitude to avoid clipping
-    //
-    //      for (i <- 0 until sampleRate * duration) {
-    //        val sample = (Math.sin(2 * Math.PI * frequency * i / sampleRate) * amplitude * 32767).toInt
-    //        writeLittleEndianShort(dos, sample)
-    //      }
-    //
-    //    } finally {
-    //      dos.close()
-    //      fos.close()
-    //    }
-    //
-    //    testFile
   }
 
   def createSpeechLikeWavFile(): java.nio.file.Path = {
