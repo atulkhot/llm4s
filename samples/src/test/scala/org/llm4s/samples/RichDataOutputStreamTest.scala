@@ -158,7 +158,7 @@ class RichDataOutputStreamTest extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write zeros for a given range" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeRepeatedValue(LazyList.continually(0).take(3))
+    val result = richDos.writeListOfValues(LazyList.continually(0).take(3))
 
     result shouldBe a[Success[_]]
     val bytes = getWrittenBytes(baos)
@@ -171,7 +171,7 @@ class RichDataOutputStreamTest extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write nothing for an empty range" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeRepeatedValue(LazyList.continually(0).take(0))
+    val result = richDos.writeListOfValues(LazyList.continually(0).take(0))
 
     result shouldBe a[Success[_]]
     getWrittenBytes(baos) should equal(Array.empty[Byte])
@@ -180,7 +180,7 @@ class RichDataOutputStreamTest extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write correct number of zeros for large ranges" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeRepeatedValue(LazyList.continually(0).take(1000))
+    val result = richDos.writeListOfValues(LazyList.continually(0).take(1000))
 
     result shouldBe a[Success[_]]
     val bytes = getWrittenBytes(baos)
@@ -191,7 +191,7 @@ class RichDataOutputStreamTest extends AnyFlatSpec with Matchers with MockFactor
 
   it should "handle negative ranges correctly" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeRepeatedValue(LazyList.empty[Int])
+    val result = richDos.writeListOfValues(LazyList.empty[Int])
 
     result shouldBe a[Success[_]]
     getWrittenBytes(baos) should equal(Array.empty[Byte])
@@ -209,7 +209,7 @@ class RichDataOutputStreamTest extends AnyFlatSpec with Matchers with MockFactor
       _ <- richDos.writeString("RIFF")
       _ <- richDos.writeInt(1234)
       _ <- richDos.writeShort(16.toShort)
-      _ <- richDos.writeRepeatedValue(LazyList.continually(0).take(2))
+      _ <- richDos.writeListOfValues(LazyList.continually(0).take(2))
     } yield ()
 
     results shouldBe a[Success[_]]

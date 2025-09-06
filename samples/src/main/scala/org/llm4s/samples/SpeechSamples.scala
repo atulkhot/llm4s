@@ -28,7 +28,7 @@ object SpeechSamples {
       x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, sh), _ => logger.trace("Wrote short '{}' successfully", sh))
     }
 
-    def writeRepeatedValue(lazyList: LazyList[Int]): Try[Unit] = Try {
+    def writeListOfValues(lazyList: LazyList[Int]): Try[Unit] = Try {
       lazyList.foreach(value => writeLittleEndianShort(dos, value))
     }.tap { x =>
       x.fold(ex => logger.error("Error '{}' while writing the lazyList", ex.getMessage), _ => logger.trace("Wrote lazyList zeroes successfully"))
@@ -70,7 +70,7 @@ object SpeechSamples {
           _ <- richDos.writeShort(bitsPerSample.toShort)
           _ <- richDos.writeString("data")
           _ <- richDos.writeInt(dataSize)
-          _ <- richDos.writeRepeatedValue(LazyList.continually(0).take(sampleRate))
+          _ <- richDos.writeListOfValues(LazyList.continually(0).take(sampleRate))
         } yield ()
       }
     } yield path
@@ -87,7 +87,7 @@ object SpeechSamples {
       )
   }
 
-  def signToneValue(sampleRate: Int, duration: Int): LazyList[Int] = {
+  def signToneValues(sampleRate: Int, duration: Int): LazyList[Int] = {
     // Generate a 440Hz sine wave tone
     val frequency = 440.0 // A note
     val amplitude = 0.3 // Reduce amplitude to avoid clipping
@@ -126,10 +126,10 @@ object SpeechSamples {
           _ <- richDos.writeShort(bitsPerSample.toShort)
           _ <- richDos.writeString("data")
           _ <- richDos.writeInt(dataSize)
-          _ <- richDos.writeRepeatedValue(signToneValue(sampleRate, duration))
+          _ <- richDos.writeListOfValues(signToneValues(sampleRate, duration))
         } yield ()
       }
-    } yield path
+    } yield path  
   }
 
   def createSpeechLikeWavFile(): java.nio.file.Path = {
