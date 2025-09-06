@@ -27,8 +27,12 @@ object SpeechSamples {
     def writeIt(sh: Short): Try[Unit] = Try(writeLittleEndianShort(dos, sh)).tap { x =>
       x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, sh), _ => logger.trace("Wrote short '{}' successfully", sh))
     }
-    
-    def writeZeros(r: Range): Try[Unit] = ???
+
+    def writeZeros(range: Range): Try[Unit] = Try {
+      range.foreach(_ => writeLittleEndianShort(dos, 0))
+    }.tap { x =>
+      x.fold(ex => logger.error("Error '{}' while writing '{}' zeroes", ex.getMessage, range), _ => logger.trace("Wrote range '{}' zeroes successfully", range))
+    }
   }
 
   def makePath(filename: String, fileExt: String): Try[Path] = Try {
