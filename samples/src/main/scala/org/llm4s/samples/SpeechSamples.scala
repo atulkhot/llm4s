@@ -6,8 +6,8 @@ import org.llm4s.speech.tts.{TTSOptions, Tacotron2TextToSpeech}
 import org.llm4s.speech.util.PlatformCommands
 import org.slf4j.LoggerFactory
 
-import java.nio.file.{Files, Path, Paths}
 import java.io.{DataOutputStream, FileOutputStream}
+import java.nio.file.{Files, Path, Paths}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Try, Using}
 
@@ -28,10 +28,10 @@ object SpeechSamples {
       x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, sh), _ => logger.trace("Wrote short '{}' successfully", sh))
     }
 
-    def writeZeros(range: Range): Try[Unit] = Try {
-      range.foreach(_ => writeLittleEndianShort(dos, 0))
+    def writeRepeatedValue(lazyList: LazyList[Int]): Try[Unit] = Try {
+      lazyList.foreach(value => writeLittleEndianShort(dos, value))
     }.tap { x =>
-      x.fold(ex => logger.error("Error '{}' while writing '{}' zeroes", ex.getMessage, range), _ => logger.trace("Wrote range '{}' zeroes successfully", range))
+      x.fold(ex => logger.error("Error '{}' while writing the lazyList", ex.getMessage), _ => logger.trace("Wrote lazyList zeroes successfully"))
     }
   }
 
@@ -70,64 +70,83 @@ object SpeechSamples {
           _ <- richDos.writeShort(bitsPerSample.toShort)
           _ <- richDos.writeString("data")
           _ <- richDos.writeInt(dataSize)
-          _ <- richDos.writeZeros(0 until sampleRate)
+          _ <- richDos.writeRepeatedValue(LazyList.continually(0).take(sampleRate))
         } yield ()
       }
     } yield path
   }
 
-  def createToneWavFile(): java.nio.file.Path = {
-    val testFile = Files.createTempFile("whisper-tone", ".wav")
-
-    // Create a WAV file with a simple 440Hz tone (A note)
-    val fos = new FileOutputStream(testFile.toFile)
-    val dos = new DataOutputStream(fos)
-
-    try {
-      val sampleRate     = 16000 // Higher sample rate for better quality
-      val channels       = 1
-      val bitsPerSample  = 16
-      val bytesPerSample = bitsPerSample / 8
-      val blockAlign     = channels * bytesPerSample
-      val byteRate       = sampleRate * blockAlign
-      val duration       = 2     // 2 seconds
-      val dataSize       = sampleRate * duration * channels * bytesPerSample
-      val fileSize       = 36 + dataSize
-
-      // WAV header
-      dos.writeBytes("RIFF")
-      writeLittleEndianInt(dos, fileSize)
-      dos.writeBytes("WAVE")
-
-      // fmt chunk
-      dos.writeBytes("fmt ")
-      writeLittleEndianInt(dos, 16)
-      writeLittleEndianShort(dos, 1) // PCM
-      writeLittleEndianShort(dos, channels)
-      writeLittleEndianInt(dos, sampleRate)
-      writeLittleEndianInt(dos, byteRate)
-      writeLittleEndianShort(dos, blockAlign)
-      writeLittleEndianShort(dos, bitsPerSample)
-
-      // data chunk
-      dos.writeBytes("data")
-      writeLittleEndianInt(dos, dataSize)
-
-      // Generate a 440Hz sine wave tone
-      val frequency = 440.0 // A note
-      val amplitude = 0.3   // Reduce amplitude to avoid clipping
-
-      for (i <- 0 until sampleRate * duration) {
-        val sample = (Math.sin(2 * Math.PI * frequency * i / sampleRate) * amplitude * 32767).toInt
-        writeLittleEndianShort(dos, sample)
+  def signToneValueList(v: Int, i: Int, sampleRate: Int, duration: Int, frequency: Double, amplitude: Double): LazyList[Int] = {
+    v #:: (
+      if (i < sampleRate * duration) {
+        val newV = (Math.sin(2 * Math.PI * frequency * i / sampleRate) * amplitude * 32767).toInt
+        signToneValueList(newV, i + 1, sampleRate, duration, frequency, amplitude)
       }
+      else
+        LazyList.empty[Int]
+      )
+  }
 
-    } finally {
-      dos.close()
-      fos.close()
-    }
+  def signToneValue(sampleRate: Int, duration: Int): LazyList[Int] = {
+    // Generate a 440Hz sine wave tone
+    val frequency = 440.0 // A note
+    val amplitude = 0.3 // Reduce amplitude to avoid clipping
+    signToneValueList(0, 0, sampleRate, duration, frequency, amplitude)
+  }
 
-    testFile
+  def createToneWavFile(): Try[java.nio.file.Path] = {
+    val sampleRate = 16000 // Higher sample rate for better quality
+    val channels = 1
+    val bitsPerSample = 16
+    val bytesPerSample = bitsPerSample / 8
+    val blockAlign = channels * bytesPerSample
+    val byteRate = sampleRate * blockAlign
+    val duration = 2 // 2 seconds
+    val dataSize = sampleRate * duration * channels * bytesPerSample
+    val fileSize = 36 + dataSize
+
+    for {
+      path <- makePath("whisper-test", ".wav")
+      _ <- Using.Manager { use =>
+        val fos = use(new FileOutputStream(path.toFile))
+        val dos = use(new DataOutputStream(fos))
+        val richDos = new RichDataOutputStream(dos)
+
+        for {
+          _ <- richDos.writeString("RIFF")
+          _ <- richDos.writeInt(fileSize)
+          _ <- richDos.writeString("WAVE")
+          _ <- richDos.writeString("fmt ")
+          _ <- richDos.writeInt(16)
+          _ <- richDos.writeShort(1.toShort)
+          _ <- richDos.writeShort(channels.toShort)
+          _ <- richDos.writeInt(sampleRate)
+          _ <- richDos.writeInt(byteRate)
+          _ <- richDos.writeShort(blockAlign.toShort)
+          _ <- richDos.writeShort(bitsPerSample.toShort)
+          _ <- richDos.writeString("data")
+          _ <- richDos.writeInt(dataSize)
+          _ <- richDos.writeRepeatedValue(signToneValue(sampleRate, duration))
+        } yield ()
+      }
+    } yield path
+
+
+    //      // Generate a 440Hz sine wave tone
+    //      val frequency = 440.0 // A note
+    //      val amplitude = 0.3   // Reduce amplitude to avoid clipping
+    //
+    //      for (i <- 0 until sampleRate * duration) {
+    //        val sample = (Math.sin(2 * Math.PI * frequency * i / sampleRate) * amplitude * 32767).toInt
+    //        writeLittleEndianShort(dos, sample)
+    //      }
+    //
+    //    } finally {
+    //      dos.close()
+    //      fos.close()
+    //    }
+    //
+    //    testFile
   }
 
   def createSpeechLikeWavFile(): java.nio.file.Path = {
@@ -138,15 +157,15 @@ object SpeechSamples {
     val dos = new DataOutputStream(fos)
 
     try {
-      val sampleRate     = 16000
-      val channels       = 1
-      val bitsPerSample  = 16
+      val sampleRate = 16000
+      val channels = 1
+      val bitsPerSample = 16
       val bytesPerSample = bitsPerSample / 8
-      val blockAlign     = channels * bytesPerSample
-      val byteRate       = sampleRate * blockAlign
-      val duration       = 3 // 3 seconds
-      val dataSize       = sampleRate * duration * channels * bytesPerSample
-      val fileSize       = 36 + dataSize
+      val blockAlign = channels * bytesPerSample
+      val byteRate = sampleRate * blockAlign
+      val duration = 3 // 3 seconds
+      val dataSize = sampleRate * duration * channels * bytesPerSample
+      val fileSize = 36 + dataSize
 
       // WAV header
       dos.writeBytes("RIFF")
@@ -168,14 +187,14 @@ object SpeechSamples {
       writeLittleEndianInt(dos, dataSize)
 
       // Generate a modulated tone that might be more speech-like
-      val baseFreq  = 200.0 // Lower frequency, more speech-like
+      val baseFreq = 200.0 // Lower frequency, more speech-like
       val amplitude = 0.2
 
       for (i <- 0 until sampleRate * duration) {
         val time = i.toDouble / sampleRate
         // Create a modulated pattern with varying frequency
         val modFreq = baseFreq + 50 * Math.sin(2 * Math.PI * 2 * time) // Frequency modulation
-        val sample  = (Math.sin(2 * Math.PI * modFreq * time) * amplitude * 32767).toInt
+        val sample = (Math.sin(2 * Math.PI * modFreq * time) * amplitude * 32767).toInt
         writeLittleEndianShort(dos, sample)
       }
 
@@ -234,8 +253,8 @@ object SpeechSamples {
 
     println("\n--- Creating Test Audio Files ---")
     // Create all test files
-    val silenceWavFile    = createTestWavFile().get
-    val toneWavFile       = createToneWavFile()
+    val silenceWavFile = createTestWavFile().get
+    val toneWavFile = createToneWavFile().get
     val speechLikeWavFile = createSpeechLikeWavFile()
 
     println(
