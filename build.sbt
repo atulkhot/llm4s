@@ -140,7 +140,7 @@ lazy val commonSettings = Seq(
     "dev.optics" %% "monocle-core"  % "3.3.0",
     "dev.optics" %% "monocle-macro" % "3.3.0",
     "org.scalatest" %% "scalatest"       % "3.2.19" % Test,
-    "commons-io"     % "commons-io"      % "2.18.0",
+    "org.scalamock" %% "scalamock" %      "7.4.2" % Test,
     "com.lihaoyi"   %% "fansi"           % "0.5.0"
   )
 )

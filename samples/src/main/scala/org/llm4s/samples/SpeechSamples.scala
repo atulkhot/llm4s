@@ -16,15 +16,15 @@ object SpeechSamples {
   private val logger = LoggerFactory.getLogger(getClass)
 
   implicit class RichDataOutputStream(dos: DataOutputStream) {
-    def writeIt(s: String): Try[Unit] = Try(dos.writeBytes(s)).tap { x =>
+    def writeString(s: String): Try[Unit] = Try(dos.writeBytes(s)).tap { x =>
       x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, s), _ => logger.trace("Wrote string '{}' successfully", s))
     }
 
-    def writeIt(i: Int): Try[Unit] = Try(writeLittleEndianInt(dos, i)).tap { x =>
+    def writeInt(i: Int): Try[Unit] = Try(writeLittleEndianInt(dos, i)).tap { x =>
       x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, i), _ => logger.trace("Wrote int '{}' successfully", i))
     }
 
-    def writeIt(sh: Short): Try[Unit] = Try(writeLittleEndianShort(dos, sh)).tap { x =>
+    def writeShort(sh: Short): Try[Unit] = Try(writeLittleEndianShort(dos, sh)).tap { x =>
       x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, sh), _ => logger.trace("Wrote short '{}' successfully", sh))
     }
 
@@ -57,19 +57,19 @@ object SpeechSamples {
         val richDos = new RichDataOutputStream(dos)
 
         for {
-          _ <- richDos.writeIt("RIFF")
-          _ <- richDos.writeIt(fileSize)
-          _ <- richDos.writeIt("WAVE")
-          _ <- richDos.writeIt("fmt ")
-          _ <- richDos.writeIt(16)
-          _ <- richDos.writeIt(1.toShort)
-          _ <- richDos.writeIt(channels.toShort)
-          _ <- richDos.writeIt(sampleRate)
-          _ <- richDos.writeIt(byteRate)
-          _ <- richDos.writeIt(blockAlign.toShort)
-          _ <- richDos.writeIt(bitsPerSample.toShort)
-          _ <- richDos.writeIt("data")
-          _ <- richDos.writeIt(dataSize)
+          _ <- richDos.writeString("RIFF")
+          _ <- richDos.writeInt(fileSize)
+          _ <- richDos.writeString("WAVE")
+          _ <- richDos.writeString("fmt ")
+          _ <- richDos.writeInt(16)
+          _ <- richDos.writeShort(1.toShort)
+          _ <- richDos.writeShort(channels.toShort)
+          _ <- richDos.writeInt(sampleRate)
+          _ <- richDos.writeInt(byteRate)
+          _ <- richDos.writeShort(blockAlign.toShort)
+          _ <- richDos.writeShort(bitsPerSample.toShort)
+          _ <- richDos.writeString("data")
+          _ <- richDos.writeInt(dataSize)
           _ <- richDos.writeZeros(0 until sampleRate)
         } yield ()
       }
