@@ -1,62 +1,81 @@
 package org.llm4s.samples
 
 import org.llm4s.speech.AudioInput
-import org.llm4s.speech.stt.{ VoskSpeechToText, WhisperSpeechToText, STTOptions }
-import org.llm4s.speech.tts.{ Tacotron2TextToSpeech, TTSOptions }
+import org.llm4s.speech.stt.{STTOptions, VoskSpeechToText, WhisperSpeechToText}
+import org.llm4s.speech.tts.{TTSOptions, Tacotron2TextToSpeech}
 import org.llm4s.speech.util.PlatformCommands
+import org.slf4j.LoggerFactory
 
-import java.nio.file.{ Files, Paths }
-import java.io.{ FileOutputStream, DataOutputStream }
+import java.nio.file.{Files, Path, Paths}
+import java.io.{DataOutputStream, FileOutputStream}
+import scala.util.chaining.scalaUtilChainingOps
+import scala.util.{Try, Using}
 
 object SpeechSamples {
 
-  def createTestWavFile(): java.nio.file.Path = {
-    val testFile = Files.createTempFile("whisper-test", ".wav")
+  private val logger = LoggerFactory.getLogger(getClass)
 
-    // Create a minimal valid WAV file with 1 second of silence
-    val fos = new FileOutputStream(testFile.toFile)
-    val dos = new DataOutputStream(fos)
-
-    try {
-      // Calculate sizes correctly
-      val sampleRate     = 8000
-      val channels       = 1
-      val bitsPerSample  = 16
-      val bytesPerSample = bitsPerSample / 8
-      val blockAlign     = channels * bytesPerSample
-      val byteRate       = sampleRate * blockAlign
-      val dataSize       = sampleRate * channels * bytesPerSample // 1 second of audio
-      val fileSize       = 36 + dataSize                          // 36 bytes header + data
-
-      // WAV header
-      dos.writeBytes("RIFF")
-      writeLittleEndianInt(dos, fileSize)
-      dos.writeBytes("WAVE")
-
-      // fmt chunk
-      dos.writeBytes("fmt ")
-      writeLittleEndianInt(dos, 16)              // fmt chunk size
-      writeLittleEndianShort(dos, 1)             // Audio format (PCM)
-      writeLittleEndianShort(dos, channels)      // Channels (mono)
-      writeLittleEndianInt(dos, sampleRate)      // Sample rate
-      writeLittleEndianInt(dos, byteRate)        // Byte rate
-      writeLittleEndianShort(dos, blockAlign)    // Block align
-      writeLittleEndianShort(dos, bitsPerSample) // Bits per sample
-
-      // data chunk
-      dos.writeBytes("data")
-      writeLittleEndianInt(dos, dataSize) // Data size
-
-      // Write 1 second of silence
-      for (_ <- 0 until sampleRate)
-        writeLittleEndianShort(dos, 0) // 16-bit silence
-
-    } finally {
-      dos.close()
-      fos.close()
+  implicit class RichDataOutputStream(dos: DataOutputStream) {
+    def writeIt(s: String): Try[Unit] = Try(dos.writeBytes(s)).tap { x =>
+      x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, s), _ => logger.trace("Wrote string '{}' successfully", s))
     }
 
-    testFile
+    def writeIt(i: Int): Try[Unit] = Try(writeLittleEndianInt(dos, i)).tap { x =>
+      x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, i), _ => logger.trace("Wrote int '{}' successfully", i))
+    }
+
+    def writeIt(sh: Short): Try[Unit] = Try(writeLittleEndianShort(dos, sh)).tap { x =>
+      x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, sh), _ => logger.trace("Wrote short '{}' successfully", sh))
+    }
+    
+    def writeZeros(r: Range): Try[Unit] = ???
+  }
+
+  def makePath(filename: String, fileExt: String): Try[Path] = Try {
+    Files.createTempFile(filename, fileExt)
+  }
+
+  def openFileForWriting(path: Path): Try[DataOutputStream] = {
+    Using.Manager { use =>
+      val fos = use(new FileOutputStream(path.toFile))
+      val dos = use(new DataOutputStream(fos))
+
+      dos
+    }
+  }
+
+  def createTestWavFile(): Try[java.nio.file.Path] = {
+    val sampleRate = 8000
+    val channels = 1
+    val bitsPerSample = 16
+    val bytesPerSample = bitsPerSample / 8
+    val blockAlign = channels * bytesPerSample
+    val byteRate = sampleRate * blockAlign
+    val dataSize = sampleRate * channels * bytesPerSample // 1 second of audio
+    val fileSize = 36 + dataSize // 36 bytes header + data
+
+    for {
+      path <- makePath("whisper-test", ".wav")
+      dos <- openFileForWriting(path)
+      // Write WAV header
+      _ <-  dos.writeIt("RIFF")
+      _ <- dos.writeIt(fileSize)
+      _ <- dos.writeIt("WAVE")
+      // Write fmt chunk
+      _ <-  dos.writeIt("fmt ")
+      _ <-  dos.writeIt(16)               // fmt chunk size
+      _ <-  dos.writeIt(1.toShort)        // Audio format (PCM)
+      _ <-  dos.writeIt(channels.toShort) // Channels (mono)
+      _ <-  dos.writeIt(sampleRate)               // Sample rate
+      _ <-  dos.writeIt(byteRate)          // Byte rate
+      _ <-  dos.writeIt(blockAlign.toShort) // Block align
+      _ <-  dos.writeIt(bitsPerSample.toShort) // Bits per sample
+      // data chunk
+      _ <-  dos.writeIt("data")
+      _ <-  dos.writeIt(dataSize) // Data size
+      // Write 1 second of silence
+      _ <- dos.writeZeros(0 until sampleRate)
+    } yield path
   }
 
   def createToneWavFile(): java.nio.file.Path = {
@@ -217,7 +236,7 @@ object SpeechSamples {
 
     println("\n--- Creating Test Audio Files ---")
     // Create all test files
-    val silenceWavFile    = createTestWavFile()
+    val silenceWavFile    = createTestWavFile().get
     val toneWavFile       = createToneWavFile()
     val speechLikeWavFile = createSpeechLikeWavFile()
 
