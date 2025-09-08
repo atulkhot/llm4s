@@ -15,23 +15,35 @@ object SpeechSamples {
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  implicit class RichDataOutputStream(dos: DataOutputStream) {
+  implicit class RichDataOutputStream(dos: DataOutputStream) extends AnyVal {
     def writeString(s: String): Try[Unit] = Try(dos.writeBytes(s)).tap { x =>
-      x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, s), _ => logger.trace("Wrote string '{}' successfully", s))
+      x.fold(
+        ex => logger.error("Failed to write string to audio file: {}", ex.getMessage),
+        _ => logger.trace("Successfully wrote string data to audio file")
+      )
     }
 
     def writeInt(i: Int): Try[Unit] = Try(writeLittleEndianInt(dos, i)).tap { x =>
-      x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, i), _ => logger.trace("Wrote int '{}' successfully", i))
+      x.fold(
+        ex => logger.error("Failed to write integer data to audio file: {}", ex.getMessage),
+        _ => logger.trace("Successfully wrote integer value {} to audio file", i)
+      )
     }
 
     def writeShort(sh: Short): Try[Unit] = Try(writeLittleEndianShort(dos, sh)).tap { x =>
-      x.fold(ex => logger.error("Error '{}' while writing '{}'", ex.getMessage, sh), _ => logger.trace("Wrote short '{}' successfully", sh))
+      x.fold(
+        ex => logger.error("Failed to write short data to audio file: {}", ex.getMessage),
+        _ => logger.trace("Successfully wrote short value {} to audio file", sh)
+      )
     }
 
     def writeListOfValues(lazyList: LazyList[Int]): Try[Unit] = Try {
       lazyList.foreach(value => writeLittleEndianShort(dos, value))
     }.tap { x =>
-      x.fold(ex => logger.error("Error '{}' while writing the lazyList", ex.getMessage), _ => logger.trace("Wrote lazyList zeroes successfully"))
+      x.fold(
+        ex => logger.error("Failed to write audio data samples: {}", ex.getMessage),
+        _ => logger.trace("Successfully wrote audio data samples to file")
+      )
     }
   }
 
