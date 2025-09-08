@@ -19,21 +19,21 @@ object SpeechSamples {
     def writeString(s: String): Try[Unit] = Try(dos.writeBytes(s)).tap { x =>
       x.fold(
         ex => logger.error("Failed to write string to audio file: {}", ex.getMessage),
-        _ => logger.trace("Successfully wrote string data to audio file")
+        _ => logger.debug("Successfully wrote string data to audio file")
       )
     }
 
     def writeInt(i: Int): Try[Unit] = Try(writeLittleEndianInt(dos, i)).tap { x =>
       x.fold(
         ex => logger.error("Failed to write integer data to audio file: {}", ex.getMessage),
-        _ => logger.trace("Successfully wrote integer value {} to audio file", i)
+        _ => logger.debug("Successfully wrote integer value {} to audio file", i)
       )
     }
 
     def writeShort(sh: Short): Try[Unit] = Try(writeLittleEndianShort(dos, sh)).tap { x =>
       x.fold(
         ex => logger.error("Failed to write short data to audio file: {}", ex.getMessage),
-        _ => logger.trace("Successfully wrote short value {} to audio file", sh)
+        _ => logger.debug("Successfully wrote short value {} to audio file", sh)
       )
     }
 
@@ -42,7 +42,7 @@ object SpeechSamples {
     }.tap { x =>
       x.fold(
         ex => logger.error("Failed to write audio data samples: {}", ex.getMessage),
-        _ => logger.trace("Successfully wrote audio data samples to file")
+        _ => logger.debug("Successfully wrote audio data samples to file")
       )
     }
   }
