@@ -1,11 +1,12 @@
 package org.llm4s
 
+import cats.data.NonEmptyChain
 import org.llm4s.error.{ ConfigurationError, ValidationError }
 import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
 import org.llm4s.types.{ AsyncResult, Result }
 import org.slf4j.Logger
-import upickle.default.{ readwriter, ReadWriter => RW }
+import upickle.default.{ readwriter, ReadWriter as RW }
 
 import java.time.Instant
 import scala.concurrent.{ ExecutionContext, Future }
@@ -33,6 +34,9 @@ package object types {
   /**
    * Core result types and error handling.
    */
+
+  /** Used for validation, multiple validation errors are represented with a non-empty list */
+  type ResultNec[+A] = Either[NonEmptyChain[error.LLMError], A]
 
   /** Standard synchronous result type used throughout the library */
   type Result[+A] = Either[error.LLMError, A]
