@@ -1,7 +1,7 @@
 package org.llm4s.speech.processing
 
-import cats.data.*
-import cats.implicits.*
+import cats.data._
+import cats.implicits._
 import org.llm4s.speech.AudioMeta
 import org.llm4s.types.{NewValidatedResult, Result}
 import org.llm4s.error.{ProcessingError, ValidationErrors}
@@ -21,7 +21,7 @@ trait AudioValidator[+A] {
  * This accumulates all validation errors instead of failing fast.
  */
 trait ValidatedAudioValidator[A] {
-  def validate(input: A): ValidatedNel[ProcessingError, A]
+  def validate(input: A): ValidatedNec[ProcessingError, A]
   def name: String
 
   /** Convert ValidatedNel to Result for compatibility */
@@ -68,7 +68,7 @@ object AudioValidator {
    */
   case class STTMetadataValidator() extends AudioValidator[AudioMeta] {
     def validate[B >: AudioMeta](input: B): Result[B] = input match {
-      case meta: AudioMeta => validateMeta(meta).leftMap(nec => ValidationErrors(nec)) 
+      case meta: AudioMeta => validateMeta(meta).leftMap(nec => ValidationErrors(nec))
       case _               => Left(ProcessingError.audioValidation("Input must be AudioMeta"))
     }
 
@@ -162,10 +162,10 @@ object AudioValidator {
   case class ValidatedNonEmptyAudioValidator() extends ValidatedAudioValidator[(Array[Byte], AudioMeta)] {
     def validate(
       input: (Array[Byte], AudioMeta)
-    ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
+    ): ValidatedNec[ProcessingError, (Array[Byte], AudioMeta)] = {
       val (bytes, _) = input
       if (bytes.isEmpty) {
-        Validated.invalidNel(ProcessingError.audioValidation("Audio data is empty"))
+        Validated.invalidNec(ProcessingError.audioValidation("Audio data is empty"))
       } else {
         Validated.valid(input)
       }
@@ -180,12 +180,12 @@ object AudioValidator {
   case class ValidatedAudioDataValidator() extends ValidatedAudioValidator[(Array[Byte], AudioMeta)] {
     def validate(
       input: (Array[Byte], AudioMeta)
-    ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
+    ): ValidatedNec[ProcessingError, (Array[Byte], AudioMeta)] = {
       val (bytes, meta)  = input
       val expectedLength = meta.numChannels * (meta.bitDepth / 8)
 
       if (bytes.length % expectedLength != 0) {
-        Validated.invalidNel(
+        Validated.invalidNec(
           ProcessingError.audioValidation(
             s"Audio data length (${bytes.length}) is not a multiple of frame size (${expectedLength})"
           )
@@ -202,24 +202,12 @@ object AudioValidator {
    * Validated version of STTMetadataValidator using Cats Validated
    */
   case class ValidatedSTTMetadataValidator() extends ValidatedAudioValidator[AudioMeta] {
-    def validate(meta: AudioMeta): ValidatedNel[ProcessingError, AudioMeta] = {
-      val validations = List(
-        if (meta.sampleRate <= 0)
-          Validated.invalidNel(ProcessingError.audioValidation("Sample rate must be positive"))
-        else Validated.valid(()),
-        if (meta.numChannels <= 0)
-          Validated.invalidNel(ProcessingError.audioValidation("Number of channels must be positive"))
-        else Validated.valid(()),
-        if (meta.bitDepth != 16)
-          Validated.invalidNel(ProcessingError.audioValidation("Only 16-bit audio is supported"))
-        else Validated.valid(()),
-        if (meta.sampleRate > 48000)
-          Validated.invalidNel(ProcessingError.audioValidation("Sample rate too high for STT"))
-        else Validated.valid(())
-      )
 
-      // Use mapN to combine all validations - this is the key improvement requested in the review
-      (validations(0), validations(1), validations(2), validations(3)).mapN((_, _, _, _) => meta)
+    def validate(meta: AudioMeta): ValidatedNec[ProcessingError, AudioMeta] = {
+      (validateSampleRate(meta), validateNumChannels(meta), validateBitDepth(meta), validateSampleRateRange(meta))
+        .mapN((_, _, _, _) => meta).leftMap(nec => nec.map(_ => ProcessingError.audioValidation(
+          nec.toNonEmptyList.toList.mkString(","))
+        ))
     }
 
     def name: String = "validated-stt-metadata-validator"
@@ -231,7 +219,7 @@ object AudioValidator {
    */
   def validatedSttValidator(
     input: (Array[Byte], AudioMeta)
-  ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
+  ): ValidatedNec[ProcessingError, (Array[Byte], AudioMeta)] = {
     val nonEmptyValidator = ValidatedNonEmptyAudioValidator()
     val dataValidator     = ValidatedAudioDataValidator()
 
