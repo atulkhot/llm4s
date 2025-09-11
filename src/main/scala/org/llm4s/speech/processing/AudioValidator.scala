@@ -34,11 +34,6 @@ trait ValidatedAudioValidator[A] {
 object AudioValidator {
   private type ValidationResult[A] = ValidatedNec[String, A]
 
-  implicit class AudioValidatorOps[A](val validator: ValidationResult[A]) extends AnyVal {
-    def toLLMValidatedResult: NewValidatedResult[A] =
-      validator.toEither
-  }
-
   private def validateSampleRate(meta: AudioMeta): ValidationResult[AudioMeta] =
     if (meta.sampleRate <= 0)
       s"sampleRate = ${meta.sampleRate}, Sample rate must be positive".invalidNec
@@ -76,7 +71,7 @@ object AudioValidator {
       val result: ValidationResult[AudioMeta] =
         (validateSampleRate(meta), validateNumChannels(meta), validateBitDepth(meta), validateSampleRateRange(meta))
           .mapN((_, _, _, _) => meta)
-      result.toLLMValidatedResult
+      result.toEither
     }
 
     def name: String = "stt-metadata-validator"
