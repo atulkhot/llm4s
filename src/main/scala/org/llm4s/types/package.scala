@@ -1,14 +1,15 @@
 package org.llm4s
 
-import org.llm4s.error.{ ConfigurationError, ValidationError }
+import cats.data.NonEmptyChain
+import org.llm4s.error.{ConfigurationError, ValidationError}
 import org.llm4s.llmconnect.model.StreamedChunk
 import org.llm4s.toolapi.ToolFunction
-import org.llm4s.types.{ AsyncResult, Result }
+import org.llm4s.types.{AsyncResult, Result}
 import org.slf4j.Logger
-import upickle.default.{ readwriter, ReadWriter => RW }
+import upickle.default.{readwriter, ReadWriter => RW}
 
 import java.time.Instant
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 /**
@@ -51,6 +52,8 @@ package object types {
 
   /** Validated result with accumulating errors */
   type ValidatedResult[+A] = Either[List[error.LLMError], A]
+
+  type NewValidatedResult[+A] = Either[NonEmptyChain[String], A]
 
   /** Paginated result for large datasets */
   type PaginatedResult[+A] = Result[(List[A], PaginationInfo)]

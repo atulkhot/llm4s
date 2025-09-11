@@ -1,11 +1,10 @@
 package org.llm4s.speech.processing
 
+import cats.data._
+import cats.implicits._
 import org.llm4s.speech.AudioMeta
-import org.llm4s.types.Result
+import org.llm4s.types.{NewValidatedResult, Result}
 import org.llm4s.error.ProcessingError
-import cats.data.Validated
-import cats.data.ValidatedNel
-import cats.syntax.apply._
 
 /**
  * Generic audio validator trait for validating audio data and metadata.
@@ -33,6 +32,36 @@ trait ValidatedAudioValidator[A] {
  * Audio validation implementations
  */
 object AudioValidator {
+  private type ValidationResult[A] = ValidatedNec[String, A]
+
+  implicit class AudioValidatorOps[A](val validator: ValidationResult[A]) extends AnyVal {
+    def toLLMValidatedResult: NewValidatedResult[A] =
+      validator.toEither
+  }
+
+  private def validateSampleRate(meta: AudioMeta): ValidationResult[AudioMeta] =
+    if (meta.sampleRate <= 0)
+      s"sampleRate = ${meta.sampleRate}, Sample rate must be positive".invalidNec
+    else
+      meta.validNec
+
+  private def validateNumChannels(meta: AudioMeta): ValidationResult[AudioMeta] =
+    if (meta.numChannels <= 0)
+      s"Number of channels = ${meta.numChannels}, Number of channels must be positive".invalidNec
+    else
+      meta.validNec
+
+  private def validateBitDepth(meta: AudioMeta): ValidationResult[AudioMeta] =
+    if (meta.bitDepth != 16)
+      s"Bit depth = ${meta.bitDepth}, Only 16-bit audio is supported".invalidNec
+    else
+      meta.validNec
+
+  private def validateSampleRateRange(meta: AudioMeta): ValidationResult[AudioMeta] =
+    if (meta.sampleRate > 48000)
+      s"Sample rate = ${meta.sampleRate}, Sample rate too high for STT".invalidNec
+    else
+      meta.validNec
 
   /**
    * Validates audio metadata for STT processing
@@ -43,19 +72,11 @@ object AudioValidator {
       case _               => Left(ProcessingError.audioValidation("Input must be AudioMeta"))
     }
 
-    private def validateMeta(meta: AudioMeta): Result[AudioMeta] = {
-      val errors = List(
-        if (meta.sampleRate <= 0) Some("Sample rate must be positive") else None,
-        if (meta.numChannels <= 0) Some("Number of channels must be positive") else None,
-        if (meta.bitDepth != 16) Some("Only 16-bit audio is supported") else None,
-        if (meta.sampleRate > 48000) Some("Sample rate too high for STT") else None
-      ).flatten
-
-      if (errors.isEmpty) {
-        Right(meta)
-      } else {
-        Left(ProcessingError.audioValidation(s"Validation failed: ${errors.mkString(", ")}"))
-      }
+    private def validateMeta(meta: AudioMeta): NewValidatedResult[AudioMeta] = {
+      val result: ValidationResult[AudioMeta] =
+        (validateSampleRate(meta), validateNumChannels(meta), validateBitDepth(meta), validateSampleRateRange(meta))
+          .mapN((_, _, _, _) => meta)
+      result.toLLMValidatedResult
     }
 
     def name: String = "stt-metadata-validator"
