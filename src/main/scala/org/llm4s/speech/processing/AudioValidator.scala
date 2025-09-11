@@ -2,7 +2,7 @@ package org.llm4s.speech.processing
 
 import cats.data._
 import cats.implicits._
-import org.llm4s.error.{ ProcessingError, ValidationError }
+import org.llm4s.error.{ProcessingError, ValidationError}
 import org.llm4s.speech.AudioMeta
 import org.llm4s.types.Result
 
@@ -47,7 +47,7 @@ object AudioValidator {
   case class STTMetadataValidator() extends AudioValidator[AudioMeta] {
     def validate[B >: AudioMeta](input: B): Result[B] = input match {
       case meta: AudioMeta => validateMeta(meta).asInstanceOf[Result[B]]
-      case _               => Left(ProcessingError.audioValidation("Input must be AudioMeta"))
+      case _ => Left(ProcessingError.audioValidation("Input must be AudioMeta"))
     }
 
     private def validateSampleRate(meta: AudioMeta): ValidationResult[AudioMeta] =
@@ -97,9 +97,9 @@ case class AudioDataValidator() extends AudioValidator[(Array[Byte], AudioMeta)]
   }
 
   private def validateData(input: (Array[Byte], AudioMeta)): Result[(Array[Byte], AudioMeta)] = {
-    val (bytes, meta)  = input
+    val (bytes, meta) = input
     val expectedLength = meta.numChannels * (meta.bitDepth / 8)
-    val isMultiple     = bytes.length % expectedLength != 0
+    val isMultiple = bytes.length % expectedLength != 0
 
     Either.cond(
       isMultiple,
@@ -149,25 +149,25 @@ case class NonEmptyAudioValidator() extends AudioValidator[(Array[Byte], AudioMe
  * Composes multiple validators
  */
 case class CompositeValidator[A](
-  validators: List[AudioValidator[A]]
-) extends AudioValidator[A] {
+                                  validators: List[AudioValidator[A]]
+                                ) extends AudioValidator[A] {
 
   def validate[B >: A](input: B): Result[B] =
     validators.foldLeft(Right(input): Result[B])((acc, validator) => acc.flatMap(validator.validate))
 
   def name: String = validators.map(_.name).mkString(" + ")
-}
 
-/**
- * Standard STT validation pipeline
- */
-def sttValidator: AudioValidator[(Array[Byte], AudioMeta)] =
-  CompositeValidator(
-    List(
-      NonEmptyAudioValidator(),
-      AudioDataValidator()
+  /**
+   * Standard STT validation pipeline
+   */
+  def sttValidator: AudioValidator[(Array[Byte], AudioMeta)] =
+    CompositeValidator(
+      List(
+        NonEmptyAudioValidator(),
+        AudioDataValidator()
+      )
     )
-  )
+}
 
 // ===== Cats Validated implementations =====
 
@@ -176,8 +176,8 @@ def sttValidator: AudioValidator[(Array[Byte], AudioMeta)] =
  */
 case class ValidatedNonEmptyAudioValidator() extends ValidatedAudioValidator[(Array[Byte], AudioMeta)] {
   def validate(
-    input: (Array[Byte], AudioMeta)
-  ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
+                input: (Array[Byte], AudioMeta)
+              ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
     val (bytes, _) = input
     if (bytes.isEmpty) {
       Validated.invalidNel(ProcessingError.audioValidation("Audio data is empty"))
@@ -194,9 +194,9 @@ case class ValidatedNonEmptyAudioValidator() extends ValidatedAudioValidator[(Ar
  */
 case class ValidatedAudioDataValidator() extends ValidatedAudioValidator[(Array[Byte], AudioMeta)] {
   def validate(
-    input: (Array[Byte], AudioMeta)
-  ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
-    val (bytes, meta)  = input
+                input: (Array[Byte], AudioMeta)
+              ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
+    val (bytes, meta) = input
     val expectedLength = meta.numChannels * (meta.bitDepth / 8)
 
     if (bytes.length % expectedLength != 0) {
@@ -238,24 +238,24 @@ case class ValidatedSTTMetadataValidator() extends ValidatedAudioValidator[Audio
   }
 
   def name: String = "validated-stt-metadata-validator"
+
+  /**
+   * Validated STT validation pipeline using Cats Validated mapN
+   * This demonstrates the improved composition requested in the review
+   */
+  def validatedSttValidator(
+                             input: (Array[Byte], AudioMeta)
+                           ): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
+    val nonEmptyValidator = ValidatedNonEmptyAudioValidator()
+    val dataValidator = ValidatedAudioDataValidator()
+
+    // Use mapN to combine validators - accumulates all errors instead of failing fast
+    (nonEmptyValidator.validate(input), dataValidator.validate(input)).mapN((_, validated) => validated)
+  }
+
+  /**
+   * Convert the validated STT validator result to Result for existing API compatibility
+   */
+  def validatedSttValidatorAsResult(input: (Array[Byte], AudioMeta)): Result[(Array[Byte], AudioMeta)] =
+    validatedSttValidator(input).toEither.left.map(_.head)
 }
-
-/**
- * Validated STT validation pipeline using Cats Validated mapN
- * This demonstrates the improved composition requested in the review
- */
-def validatedSttValidator(
-  input: (Array[Byte], AudioMeta)
-): ValidatedNel[ProcessingError, (Array[Byte], AudioMeta)] = {
-  val nonEmptyValidator = ValidatedNonEmptyAudioValidator()
-  val dataValidator     = ValidatedAudioDataValidator()
-
-  // Use mapN to combine validators - accumulates all errors instead of failing fast
-  (nonEmptyValidator.validate(input), dataValidator.validate(input)).mapN((_, validated) => validated)
-}
-
-/**
- * Convert the validated STT validator result to Result for existing API compatibility
- */
-def validatedSttValidatorAsResult(input: (Array[Byte], AudioMeta)): Result[(Array[Byte], AudioMeta)] =
-  validatedSttValidator(input).toEither.left.map(_.head)
