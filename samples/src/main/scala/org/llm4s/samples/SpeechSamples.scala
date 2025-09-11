@@ -68,7 +68,7 @@ object SpeechSamples {
         val dos = use(new DataOutputStream(fos))
         val richDos = new RichDataOutputStream(dos)
 
-        for {
+        val writeFileTry = for {
           _ <- richDos.writeString("RIFF")
           _ <- richDos.writeInt(fileSize)
           _ <- richDos.writeString("WAVE")
@@ -84,6 +84,7 @@ object SpeechSamples {
           _ <- richDos.writeInt(dataSize)
           _ <- richDos.writeListOfValues(LazyList.continually(0).take(sampleRate))
         } yield ()
+        writeFileTry.get // make this Try throw on failure, so the outer Try fails as well
       }
     } yield path
   }
@@ -126,7 +127,7 @@ object SpeechSamples {
         val dos = use(new DataOutputStream(fos))
         val richDos = new RichDataOutputStream(dos)
 
-        for {
+        val writeFileTry = for {
           _ <- richDos.writeString("RIFF")
           _ <- richDos.writeInt(fileSize)
           _ <- richDos.writeString("WAVE")
@@ -142,6 +143,7 @@ object SpeechSamples {
           _ <- richDos.writeInt(dataSize)
           _ <- richDos.writeListOfValues(signToneValuesGenerator(sampleRate, duration))
         } yield ()
+        writeFileTry.get // make this Try throw on failure, so the outer Try fails as well
       }
     } yield path
   }
@@ -176,14 +178,14 @@ object SpeechSamples {
     val dataSize = sampleRate * duration * channels * bytesPerSample
     val fileSize = 36 + dataSize
 
-    for {
+    val writeFileTry = for {
       path <- makePath("whisper-speech", ".wav")
       _ <- Using.Manager { use =>
         val fos = use(new FileOutputStream(path.toFile))
         val dos = use(new DataOutputStream(fos))
         val richDos = new RichDataOutputStream(dos)
 
-        for {
+        val writeFileTry = for {
           // WAV header
           _ <- richDos.writeString("RIFF")
           _ <- richDos.writeInt(fileSize)
@@ -202,6 +204,7 @@ object SpeechSamples {
           _ <- richDos.writeInt(dataSize)
           _ <- richDos.writeListOfValues(speechLikeWavValuesGenerator(sampleRate, duration))
         } yield ()
+        writeFileTry.get // make this Try throw on failure, so the outer Try fails as well
       }
     } yield path
   }
