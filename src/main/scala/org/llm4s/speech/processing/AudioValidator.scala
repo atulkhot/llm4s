@@ -1,10 +1,10 @@
 package org.llm4s.speech.processing
 
-import cats.data._
-import cats.implicits._
+import cats.data.*
+import cats.implicits.*
 import org.llm4s.speech.AudioMeta
 import org.llm4s.types.{NewValidatedResult, Result}
-import org.llm4s.error.ProcessingError
+import org.llm4s.error.{ProcessingError, ValidationErrors}
 
 /**
  * Generic audio validator trait for validating audio data and metadata.
@@ -68,7 +68,7 @@ object AudioValidator {
    */
   case class STTMetadataValidator() extends AudioValidator[AudioMeta] {
     def validate[B >: AudioMeta](input: B): Result[B] = input match {
-      case meta: AudioMeta => validateMeta(meta).asInstanceOf[Result[B]]
+      case meta: AudioMeta => validateMeta(meta).leftMap(nec => ValidationErrors(nec)) 
       case _               => Left(ProcessingError.audioValidation("Input must be AudioMeta"))
     }
 
