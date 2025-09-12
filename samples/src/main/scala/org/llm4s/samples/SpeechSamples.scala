@@ -178,7 +178,7 @@ object SpeechSamples {
     val dataSize = sampleRate * duration * channels * bytesPerSample
     val fileSize = 36 + dataSize
 
-    val writeFileTry = for {
+    for {
       path <- makePath("whisper-speech", ".wav")
       _ <- Using.Manager { use =>
         val fos = use(new FileOutputStream(path.toFile))
