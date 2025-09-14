@@ -16,9 +16,7 @@ object SpeechSamples {
   private val logger = LoggerFactory.getLogger(getClass)
 
   implicit class RichDataOutputStream(dos: DataOutputStream) extends AnyVal {
-    def writeString(s: String): Try[Unit] = Try {
-      dos.writeBytes(s)
-    }.tap { x =>
+    def writeString(s: String): Try[Unit] = Try(dos.writeBytes(s)).tap { x =>
       x.fold(
         ex => logger.error("Failed to write string to audio file: {}", ex.getMessage),
         _ => logger.debug("Successfully wrote string data to audio file")

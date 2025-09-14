@@ -236,7 +236,8 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
       _ <- richDos.writeShort(16.toShort) // This won't execute
     } yield ()
 
-    results should equal (Failure(new RuntimeException("Something Broke")))
+    results shouldBe a[Failure[_]]
+    results.failed.get.getMessage shouldBe "Something Broke"
     val bytes = getWrittenBytes(box)
     bytes.length should equal(0)
   }
