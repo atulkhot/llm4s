@@ -6,14 +6,14 @@ import org.scalatest.matchers.should.Matchers
 
 import java.io.{ ByteArrayOutputStream, DataOutputStream }
 import java.nio.{ ByteBuffer, ByteOrder }
-import scala.util.Success
+import scala.util.{ Failure, Success }
 
 class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactory {
 
   // Helper methods to create test instances
   private def createTestStream(): (ByteArrayOutputStream, DataOutputStream, SpeechSamples.RichDataOutputStream) = {
-    val baos = new ByteArrayOutputStream()
-    val dos = new DataOutputStream(baos)
+    val baos    = new ByteArrayOutputStream()
+    val dos     = new DataOutputStream(baos)
     val richDos = new SpeechSamples.RichDataOutputStream(dos)
     (baos, dos, richDos)
   }
@@ -21,16 +21,14 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
   private def getWrittenBytes(baos: ByteArrayOutputStream): Array[Byte] = baos.toByteArray
 
   // Helper to convert bytes to little-endian int for verification
-  private def bytesToLittleEndianInt(bytes: Array[Byte], offset: Int = 0): Int = {
+  private def bytesToLittleEndianInt(bytes: Array[Byte], offset: Int = 0): Int =
     ByteBuffer.wrap(bytes, offset, 4).order(ByteOrder.LITTLE_ENDIAN).getInt
-  }
 
   // Helper to convert bytes to little-endian short for verification
-  private def bytesToLittleEndianShort(bytes: Array[Byte], offset: Int = 0): Short = {
+  private def bytesToLittleEndianShort(bytes: Array[Byte], offset: Int = 0): Short =
     ByteBuffer.wrap(bytes, offset, 2).order(ByteOrder.LITTLE_ENDIAN).getShort
-  }
 
-  behavior of "RichDataOutputStream.writeIt(String)"
+  behavior.of("RichDataOutputStream.writeIt(String)")
 
   it should "successfully write a string to the stream" in {
     val (baos, dos, richDos) = createTestStream()
@@ -54,7 +52,7 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
   it should "handle special characters in strings" in {
     val (baos, dos, richDos) = createTestStream()
-    val testString = "fmt "  // Note the space character
+    val testString           = "fmt " // Note the space character
 
     val result = richDos.writeString(testString)
 
@@ -63,11 +61,11 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
     dos.close()
   }
 
-  behavior of "RichDataOutputStream.writeIt(Int)"
+  behavior.of("RichDataOutputStream.writeIt(Int)")
 
   it should "write an integer in little-endian format" in {
     val (baos, dos, richDos) = createTestStream()
-    val testInt = 0x12345678
+    val testInt              = 0x12345678
 
     val result = richDos.writeInt(testInt)
 
@@ -92,7 +90,7 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write negative integers correctly" in {
     val (baos, dos, richDos) = createTestStream()
-    val testInt = -1
+    val testInt              = -1
 
     val result = richDos.writeInt(testInt)
 
@@ -105,7 +103,7 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write maximum integer value" in {
     val (baos, dos, richDos) = createTestStream()
-    val testInt = Int.MaxValue
+    val testInt              = Int.MaxValue
 
     val result = richDos.writeInt(testInt)
 
@@ -115,11 +113,11 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
     dos.close()
   }
 
-  behavior of "RichDataOutputStream.writeIt(Short)"
+  behavior.of("RichDataOutputStream.writeIt(Short)")
 
   it should "write a short in little-endian format" in {
     val (baos, dos, richDos) = createTestStream()
-    val testShort: Short = 0x1234.toShort
+    val testShort: Short     = 0x1234.toShort
 
     val result = richDos.writeShort(testShort)
 
@@ -144,7 +142,7 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
   it should "handle short overflow correctly" in {
     val (baos, dos, richDos) = createTestStream()
-    val testShort: Short = Short.MaxValue
+    val testShort: Short     = Short.MaxValue
 
     val result = richDos.writeShort(testShort)
 
@@ -154,15 +152,15 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
     dos.close()
   }
 
-  behavior of "RichDataOutputStream.writeZeros"
+  behavior.of("RichDataOutputStream.writeZeros")
 
   it should "write zeros for a given range" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeListOfValues(LazyList.continually(0).take(3))
+    val result               = richDos.writeListOfValues(LazyList.continually(0).take(3))
 
     result shouldBe a[Success[_]]
     val bytes = getWrittenBytes(baos)
-    bytes.length should equal(6)  // 3 shorts * 2 bytes each
+    bytes.length should equal(6) // 3 shorts * 2 bytes each
 
     // Verify all bytes are zero
     bytes.foreach(_ should equal(0))
@@ -171,7 +169,7 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write nothing for an empty range" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeListOfValues(LazyList.continually(0).take(0))
+    val result               = richDos.writeListOfValues(LazyList.continually(0).take(0))
 
     result shouldBe a[Success[_]]
     getWrittenBytes(baos) should equal(Array.empty[Byte])
@@ -180,27 +178,27 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
   it should "write correct number of zeros for large ranges" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeListOfValues(LazyList.continually(0).take(1000))
+    val result               = richDos.writeListOfValues(LazyList.continually(0).take(1000))
 
     result shouldBe a[Success[_]]
     val bytes = getWrittenBytes(baos)
-    bytes.length should equal(2000)  // 1000 shorts * 2 bytes each
+    bytes.length should equal(2000) // 1000 shorts * 2 bytes each
     bytes.foreach(_ should equal(0))
     dos.close()
   }
 
   it should "handle negative ranges correctly" in {
     val (baos, dos, richDos) = createTestStream()
-    val result = richDos.writeListOfValues(LazyList.empty[Int])
+    val result               = richDos.writeListOfValues(LazyList.empty[Int])
 
     result shouldBe a[Success[_]]
     getWrittenBytes(baos) should equal(Array.empty[Byte])
     dos.close()
   }
 
-  behavior of "RichDataOutputStream error handling"
+  behavior.of("RichDataOutputStream error handling")
 
-  behavior of "RichDataOutputStream combined operations"
+  behavior.of("RichDataOutputStream combined operations")
 
   it should "successfully chain multiple write operations" in {
     val (baos, dos, richDos) = createTestStream()
@@ -225,35 +223,39 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
     dos.close()
   }
 
-  //TODO fix me it does not compile
-//  it should "stop chain execution on first failure" in {
-//    val richDos = mock[SpeechSamples.RichDataOutputStream]
-//    richDos.writeString.expects("RIFF").returns(Try(throw new RuntimeException("Something Broke")))
-//    richDos.writeInt.expects(1234).never()
-//    richDos.writeShort.expects(16.toShort).never()
-//    val results = for {
-//      _ <- richDos.writeString("RIFF") // This will fail
-//      _ <- richDos.writeInt(1234) // This won't execute
-//      _ <- richDos.writeShort(16.toShort) // This won't execute
-//    } yield ()
-//
-//    results shouldBe a[Failure[_]]
-//  }
+  it should "stop chain execution on first failure" in {
+    val box = new ByteArrayOutputStream() {
+      override def write(b: Int): Unit =
+        throw new RuntimeException("Something Broke")
+    }
+    val dos     = new DataOutputStream(box)
+    val richDos = new SpeechSamples.RichDataOutputStream(dos)
+    val results = for {
+      _ <- richDos.writeString("RIFF")    // This will fail
+      _ <- richDos.writeInt(1234)         // This won't execute
+      _ <- richDos.writeShort(16.toShort) // This won't execute
+    } yield ()
 
-  behavior of "RichDataOutputStream with real WAV data"
+//    results shouldBe a[Failure[_]]
+    results == Failure(new RuntimeException("Something Broke"))
+    val bytes = getWrittenBytes(box)
+    bytes.length should equal(0)
+  }
+
+  behavior.of("RichDataOutputStream with real WAV data")
 
   it should "write a complete WAV header structure" in {
     val (baos, dos, richDos) = createTestStream()
 
     // Simulate WAV header data
-    val sampleRate = 8000
-    val channels = 1
-    val bitsPerSample = 16
+    val sampleRate     = 8000
+    val channels       = 1
+    val bitsPerSample  = 16
     val bytesPerSample = bitsPerSample / 8
-    val blockAlign = channels * bytesPerSample
-    val byteRate = sampleRate * blockAlign
-    val dataSize = sampleRate * channels * bytesPerSample
-    val fileSize = 36 + dataSize
+    val blockAlign     = channels * bytesPerSample
+    val byteRate       = sampleRate * blockAlign
+    val dataSize       = sampleRate * channels * bytesPerSample
+    val fileSize       = 36 + dataSize
 
     val results = for {
       _ <- richDos.writeString("RIFF")
@@ -282,7 +284,7 @@ class RichDataOutputStreamSpec extends AnyFlatSpec with Matchers with MockFactor
 
     // Verify numeric values
     bytesToLittleEndianInt(bytes, 4) should equal(fileSize)
-    bytesToLittleEndianInt(bytes, 16) should equal(16) // fmt chunk size
+    bytesToLittleEndianInt(bytes, 16) should equal(16)  // fmt chunk size
     bytesToLittleEndianShort(bytes, 20) should equal(1) // PCM format
     bytesToLittleEndianInt(bytes, 24) should equal(sampleRate)
 
