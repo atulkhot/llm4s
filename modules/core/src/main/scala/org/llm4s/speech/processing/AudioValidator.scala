@@ -18,18 +18,6 @@ trait AudioValidator[+A] {
 }
 
 /**
- * Cats Validated-based audio validator for better error accumulation.
- * This accumulates all validation errors instead of failing fast.
- */
-trait ValidatedAudioValidator[A] {
-  def validate(input: A): ValidatedNel[ProcessingError, A]
-  def name: String
-
-  /** Convert ValidatedNel to Result for compatibility */
-  def validateAsResult(input: A): Result[A] = validate(input).toEither.left.map(_.head)
-}
-
-/**
  * Audio validation implementations
  */
 object AudioValidator {
@@ -116,7 +104,7 @@ object AudioValidator {
   /**
    * Validated version of STTMetadataValidator using Cats Validated
    */
-  case class ValidatedSTTMetadataValidator() extends ValidatedAudioValidator[AudioMeta] {
+  case class ValidatedSTTMetadataValidator() {
     def validate(meta: AudioMeta): ValidatedNel[ProcessingError, AudioMeta] =
       (
         validateSampleRate(meta),
