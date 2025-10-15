@@ -32,28 +32,28 @@ object AudioValidations {
       input.validNel
   }
 
-  private[processing] def validateSampleRate(meta: AudioMeta): ValidatedNel[ProcessingError, Int] =
+  private[processing] def validateSampleRate(meta: AudioMeta): ValidatedNel[ProcessingError, Unit] =
     if (meta.sampleRate <= 0)
       ProcessingError.audioValidation("Sample rate must be positive").invalidNel
     else
-      meta.sampleRate.validNel
+      ().validNel
 
-  private[processing] def validateNumChannels(meta: AudioMeta): ValidatedNel[ProcessingError, Int] =
+  private[processing] def validateNumChannels(meta: AudioMeta): ValidatedNel[ProcessingError, Unit] =
     if (meta.numChannels <= 0)
       ProcessingError.audioValidation("Number of channels must be positive").invalidNel
     else
-      meta.numChannels.validNel
+      ().validNel
 
-  private[processing] def validateBitDepth(meta: AudioMeta): ValidatedNel[ProcessingError, Int] =
+  private[processing] def validateBitDepth(meta: AudioMeta): ValidatedNel[ProcessingError, Unit] =
     if (meta.bitDepth != 16)
       ProcessingError.audioValidation("Only 16-bit audio is supported").invalidNel
     else
-      meta.bitDepth.validNel
+      ().validNel
 
-  private[processing] def validateSampleRateIsNotTooHigh(meta: AudioMeta): ValidatedNel[ProcessingError, Int] =
+  private[processing] def validateSampleRateIsNotTooHigh(meta: AudioMeta): ValidatedNel[ProcessingError, Unit] =
     if (meta.sampleRate > 48000)
       ProcessingError.audioValidation("Sample rate too high for STT").invalidNel
     else
-      meta.sampleRate.validNel
+      ().validNel
 
 }

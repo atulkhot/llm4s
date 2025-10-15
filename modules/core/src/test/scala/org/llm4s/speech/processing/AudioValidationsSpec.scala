@@ -56,7 +56,7 @@ class AudioValidationsSpec extends AnyWordSpec with Matchers with OptionValues {
 
   "validateSampleRate" should {
     "accept positive sample rates" in {
-      AudioValidations.validateSampleRate(AudioMeta(16_000, 1, 16)).toEither shouldBe Right(16_000)
+      AudioValidations.validateSampleRate(AudioMeta(16_000, 1, 16)).toEither shouldBe Right(())
     }
 
     "reject non-positive sample rates" in {
@@ -69,7 +69,7 @@ class AudioValidationsSpec extends AnyWordSpec with Matchers with OptionValues {
 
   "validateNumChannels" should {
     "accept positive channel counts" in {
-      AudioValidations.validateNumChannels(AudioMeta(16_000, 1, 16)).toEither shouldBe Right(1)
+      AudioValidations.validateNumChannels(AudioMeta(16_000, 1, 16)).toEither shouldBe Right(())
     }
 
     "reject non-positive channel counts" in {
@@ -82,7 +82,7 @@ class AudioValidationsSpec extends AnyWordSpec with Matchers with OptionValues {
 
   "validateBitDepth" should {
     "accept 16-bit audio" in {
-      AudioValidations.validateBitDepth(AudioMeta(16_000, 1, 16)).toEither shouldBe Right(16)
+      AudioValidations.validateBitDepth(AudioMeta(16_000, 1, 16)).toEither shouldBe Right(())
     }
 
     "reject unsupported bit depths" in {
@@ -95,7 +95,7 @@ class AudioValidationsSpec extends AnyWordSpec with Matchers with OptionValues {
 
   "validateSampleRateIsNotTooHigh" should {
     "accept sample rates at or below 48kHz" in {
-      AudioValidations.validateSampleRateIsNotTooHigh(AudioMeta(48_000, 1, 16)).toEither shouldBe Right(48_000)
+      AudioValidations.validateSampleRateIsNotTooHigh(AudioMeta(48_000, 1, 16)).toEither shouldBe Right(())
     }
 
     "reject overly high sample rates" in {
