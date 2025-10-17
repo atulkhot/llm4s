@@ -1,5 +1,6 @@
 package org.llm4s.mcp
 
+import cats.data.{ Validated, ValidatedNel }
 import cats.implicits._
 import org.llm4s.toolapi._
 import org.slf4j.LoggerFactory
@@ -9,11 +10,14 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
+import scala.util.chaining.scalaUtilChainingOps
+
 // MCP-aware tool registry that integrates with the existing tool API
 class MCPToolRegistry(
   mcpServers: Seq[MCPServerConfig],
   localTools: Seq[ToolFunction[_, _]] = Seq.empty,
-  cacheTTL: Duration = 10.minutes
+  cacheTTL: Duration = 10.minutes,
+  initializeOnStartup: Boolean = true
 ) extends ToolRegistry(localTools)
     with AutoCloseable {
 
@@ -22,6 +26,9 @@ class MCPToolRegistry(
   private val toolCache: ConcurrentHashMap[String, CachedTools] = new ConcurrentHashMap()
 
   logger.info(s"Initializing MCPToolRegistry with ${mcpServers.size} MCP servers and ${localTools.size} local tools")
+  if (!initializeOnStartup) {
+    logger.debug("Skipping MCP server initialization on startup (initializeOnStartup = false)")
+  }
   logger.debug(s"Cache TTL set to $cacheTTL")
 
   // Override to return ALL tools (local + MCP)
@@ -158,22 +165,34 @@ class MCPToolRegistry(
     logger.info("All MCP clients closed")
   }
 
+  private[mcp] def createAndInitializeClient(server: MCPServerConfig): ValidatedNel[String, MCPServerConfig] = {
+    val status: Either[String, MCPServerConfig] = for {
+      mcpClient <- Try(getOrCreateClient(server)).toEither.leftMap(_.getMessage)
+      _         <- mcpClient.initialize()
+    } yield server
+    status.tap { x =>
+      x.fold(
+        err => logger.error(s"Failed to initialize MCP server '{}' : Error is {}", server.name, err),
+        _ => logger.info(s"MCP server initialized: {}", server.name)
+      )
+    }
+    status.toValidatedNel
+  }
+
   // Health check for MCP servers
   def healthCheck(): Map[String, Boolean] = {
     logger.info("Performing health check on all MCP servers")
-    val results = mcpServers.map { server =>
-      val isHealthy = Try {
-        val client = getOrCreateClient(server)
-        client.initialize().isRight
-      }.getOrElse(false)
+    val (_, servers) = mcpServers.foldMap { server =>
+      createAndInitializeClient(server) match {
+        case Validated.Valid(v)   => (List.empty[String], List(v))
+        case Validated.Invalid(e) => (e.toList, List.empty[MCPServerConfig])
+      }
+    }
 
-      logger.debug(s"Health check for ${server.name}: ${if (isHealthy) "OK" else "FAILED"}")
-      server.name -> isHealthy
-    }.toMap
-
-    val healthyCount = results.values.count(identity)
-    logger.info(s"Health check completed: $healthyCount/${results.size} servers healthy")
-    results
+    val healthyCount = servers.size
+    logger.info(s"Health check completed: $healthyCount/${mcpServers.size} servers healthy")
+    val serverNames: Set[String] = servers.map(_.name).toSet
+    mcpServers.map(server => server.name -> serverNames(server.name)).toMap
   }
 
   // Initialize MCP tools after all methods are defined (with lazy initialization option)
@@ -199,8 +218,10 @@ class MCPToolRegistry(
     }
   }
 
-  // Initialize tools during construction
-  initializeMCPTools()
+  // Initialize tools during construction unless explicitly disabled (useful for tests)
+  if (initializeOnStartup) {
+    initializeMCPTools()
+  }
 
   override def close(): Unit =
     closeMCPClients()
@@ -219,7 +240,8 @@ object MCPToolRegistry {
     new MCPToolRegistry(
       mcpServers = Seq(mcpServerConfig),
       localTools = Seq.empty, // No local tools, using only Playwright MCP tools
-      cacheTTL = 10.minutes
+      cacheTTL = 10.minutes,
+      initializeOnStartup = true
     )
 }
 
