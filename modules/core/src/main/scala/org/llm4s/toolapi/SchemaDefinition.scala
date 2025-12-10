@@ -187,6 +187,24 @@ case class ObjectSchema[T](
 
   def withProperty[P](property: PropertyDefinition[P]): ObjectSchema[T] =
     copy(properties = properties :+ property)
+
+  /**
+   * Add a required field to the object schema
+   * @param name The name of the property
+   * @param schema The schema definition for the property
+   * @return A new ObjectSchema with the required property added
+   */
+  def withRequiredField[P](name: String, schema: SchemaDefinition[P]): ObjectSchema[T] =
+    withProperty(PropertyDefinition(name, schema, required = true))
+
+  /**
+   * Add an optional field to the object schema
+   * @param name The name of the property
+   * @param schema The schema definition for the property
+   * @return A new ObjectSchema with the optional property added
+   */
+  def withOptionalField[P](name: String, schema: SchemaDefinition[P]): ObjectSchema[T] =
+    withProperty(PropertyDefinition(name, schema, required = false))
 }
 
 /**

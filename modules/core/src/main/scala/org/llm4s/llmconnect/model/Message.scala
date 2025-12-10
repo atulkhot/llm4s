@@ -47,7 +47,7 @@ object Message {
         case "user"      => UserMessage(obj("content").str)
         case "system"    => SystemMessage(obj("content").str)
         case "assistant" => read[AssistantMessage](obj("data"))
-        case "tool"      => ToolMessage(obj("toolCallId").str, obj("content").str)
+        case "tool"      => ToolMessage(obj("content").str, obj("toolCallId").str)
       }
     }
   )
@@ -104,19 +104,26 @@ object Message {
             errors += s"Multiple system messages found - system message at index $index should be first"
           }
 
-        case _: ToolMessage =>
+        case toolMsg: ToolMessage =>
           // Tool messages must follow assistant messages with tool calls
+          // Multiple consecutive tool messages are allowed if they belong to the same batch of tool calls
           if (index == 0) {
             errors += "Tool messages cannot be the first message in a conversation"
           } else {
-            val previousMessage = messages(index - 1)
-            previousMessage match {
-              case assistantMsg: AssistantMessage =>
-                if (assistantMsg.toolCalls.isEmpty) {
-                  errors += s"Tool message at index $index must follow an assistant message with tool calls"
+            // Find the most recent AssistantMessage with tool calls before this ToolMessage
+            val previousMessages = messages.take(index).reverse
+            val recentAssistantWithToolCalls = previousMessages.collectFirst {
+              case am: AssistantMessage if am.toolCalls.nonEmpty => am
+            }
+
+            recentAssistantWithToolCalls match {
+              case Some(assistantMsg) =>
+                // Check if this tool message's ID matches one of the tool calls
+                if (!assistantMsg.toolCalls.exists(_.id == toolMsg.toolCallId)) {
+                  errors += s"Tool message at index $index with call ID '${toolMsg.toolCallId}' does not match any tool calls from recent assistant message"
                 }
-              case _ =>
-                errors += s"Tool message at index $index must follow an assistant message"
+              case None =>
+                errors += s"Tool message at index $index must have an assistant message with tool calls before it"
             }
           }
 

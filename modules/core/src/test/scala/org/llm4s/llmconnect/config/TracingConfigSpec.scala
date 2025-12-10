@@ -19,8 +19,17 @@ class TracingConfigSpec extends AnyWordSpec with Matchers {
       }
   }
 
+  private def isLangfuseConfigured: Boolean =
+    Option(System.getenv("LANGFUSE_PUBLIC_KEY")).exists(_.nonEmpty) ||
+      Option(System.getenv("LANGFUSE_SECRET_KEY")).exists(_.nonEmpty)
+
   "ConfigReader.TracingConf (Langfuse settings)" should {
     "provide defaults when not configured" in {
+      // Skip test if Langfuse is configured in environment
+      if (isLangfuseConfigured) {
+        cancel("Test skipped: Langfuse is configured in environment (LANGFUSE_PUBLIC_KEY or LANGFUSE_SECRET_KEY)")
+      }
+
       val ts  = ConfigReader.TracingConf().fold(err => fail(err.toString), identity)
       val cfg = ts.langfuse
       cfg.url shouldBe DefaultConfig.DEFAULT_LANGFUSE_URL

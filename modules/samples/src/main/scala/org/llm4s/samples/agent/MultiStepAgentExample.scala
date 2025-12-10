@@ -25,7 +25,18 @@ object MultiStepAgentExample {
       _                   = println("\n\n=== Running Multi-Step Agent with Step Limit ===\n")
       _                   = println("Example 2: Running with a step limit of 1, with trace logging")
       limitedTraceLogPath = "/Users/rory.graves/workspace/home/llm4s/log/agent-trace-limited.md"
-      _ = agent.run(query, toolRegistry, Some(1), Some(limitedTraceLogPath), None) match {
+      _ = agent.run(
+        query = query,
+        tools = toolRegistry,
+        inputGuardrails = Seq.empty,
+        outputGuardrails = Seq.empty,
+        handoffs = Seq.empty,
+        maxSteps = Some(1),
+        traceLogPath = Some(limitedTraceLogPath),
+        systemPromptAddition = None,
+        completionOptions = org.llm4s.llmconnect.model.CompletionOptions(),
+        debug = false
+      ) match {
         case Right(finalState) =>
           println(s"Final status: ${finalState.status}")
 

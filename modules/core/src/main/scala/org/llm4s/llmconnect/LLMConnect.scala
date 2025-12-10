@@ -20,14 +20,14 @@ object LLMConnect {
     config match {
       case cfg: OpenAIConfig =>
         if (cfg.baseUrl.contains("openrouter.ai"))
-          Right(new OpenRouterClient(cfg))
-        else OpenAIClient.create(cfg)
+          OpenRouterClient(cfg)
+        else OpenAIClient(cfg)
       case cfg: AzureConfig =>
-        OpenAIClient.create(cfg)
+        OpenAIClient(cfg)
       case cfg: AnthropicConfig =>
-        Right(new AnthropicClient(cfg))
+        AnthropicClient(cfg)
       case cfg: OllamaConfig =>
-        Right(new OllamaClient(cfg))
+        OllamaClient(cfg)
     }
 
   // Typed-config entry: build client directly from ProviderConfig
@@ -36,11 +36,11 @@ object LLMConnect {
 
   def getClient(provider: LLMProvider, config: ProviderConfig): Result[LLMClient] =
     (provider, config) match {
-      case (LLMProvider.OpenAI, cfg: OpenAIConfig)       => OpenAIClient.create(cfg)
-      case (LLMProvider.OpenRouter, cfg: OpenAIConfig)   => Right(new OpenRouterClient(cfg))
-      case (LLMProvider.Azure, cfg: AzureConfig)         => OpenAIClient.create(cfg)
-      case (LLMProvider.Anthropic, cfg: AnthropicConfig) => Right(new AnthropicClient(cfg))
-      case (LLMProvider.Ollama, cfg: OllamaConfig)       => Right(new OllamaClient(cfg))
+      case (LLMProvider.OpenAI, cfg: OpenAIConfig)       => OpenAIClient(cfg)
+      case (LLMProvider.OpenRouter, cfg: OpenAIConfig)   => OpenRouterClient(cfg)
+      case (LLMProvider.Azure, cfg: AzureConfig)         => OpenAIClient(cfg)
+      case (LLMProvider.Anthropic, cfg: AnthropicConfig) => AnthropicClient(cfg)
+      case (LLMProvider.Ollama, cfg: OllamaConfig)       => OllamaClient(cfg)
       case (prov, wrongCfg) =>
         val cfgType = wrongCfg.getClass.getSimpleName
         val msg     = s"Invalid config type $cfgType for provider $prov"
@@ -55,6 +55,6 @@ object LLMConnect {
 
   // Convenience: build client from environment/config using typed ProviderConfig loader
   def fromEnv(): Result[LLMClient] =
-    org.llm4s.config.ConfigReader.Provider().flatMap(getClient)
+    ConfigReader.Provider().flatMap(getClient)
 
 }

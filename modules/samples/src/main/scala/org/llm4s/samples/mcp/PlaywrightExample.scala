@@ -145,7 +145,7 @@ object PlaywrightExample {
       val initialState = AgentState(
         conversation = Conversation(initialMessages),
         tools = registry,
-        userQuery = query
+        initialQuery = Some(query)
       )
 
       // Use the agent's runUntilCompletion method directly with our custom state
@@ -228,7 +228,8 @@ object PlaywrightExample {
               Left(error)
           }
 
-        case (org.llm4s.agent.AgentStatus.Complete, _) | (org.llm4s.agent.AgentStatus.Failed(_), _) =>
+        case (org.llm4s.agent.AgentStatus.Complete, _) | (org.llm4s.agent.AgentStatus.Failed(_), _) |
+            (org.llm4s.agent.AgentStatus.HandoffRequested(_, _), _) =>
           Right(state)
       }
 

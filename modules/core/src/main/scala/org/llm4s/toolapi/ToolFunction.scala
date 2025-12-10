@@ -27,13 +27,33 @@ case class ToolFunction[T, R: ReadWriter](
     )
 
   /**
+   * Helper to check if this tool has any required parameters
+   */
+  private def hasRequiredParameters: Boolean = schema match {
+    case objSchema: ObjectSchema[_] =>
+      objSchema.properties.exists(_.required)
+    case _ =>
+      // Non-object schemas are considered to have required parameters
+      true
+  }
+
+  /**
    * Executes the tool with the given arguments
    */
   def execute(args: ujson.Value): Either[ToolCallError, ujson.Value] =
     // Check for null arguments first
     args match {
       case ujson.Null =>
-        Left(ToolCallError.NullArguments(name))
+        // For zero-parameter tools, treat null as empty object
+        if (!hasRequiredParameters) {
+          val extractor = SafeParameterExtractor(ujson.Obj())
+          handler(extractor) match {
+            case Right(result) => Right(writeJs(result))
+            case Left(error)   => Left(ToolCallError.HandlerError(name, error))
+          }
+        } else {
+          Left(ToolCallError.NullArguments(name))
+        }
       case _ =>
         val extractor = SafeParameterExtractor(args)
         handler(extractor) match {
@@ -56,7 +76,16 @@ case class ToolFunction[T, R: ReadWriter](
   ): Either[ToolCallError, ujson.Value] =
     args match {
       case ujson.Null =>
-        Left(ToolCallError.NullArguments(name))
+        // For zero-parameter tools, treat null as empty object
+        if (!hasRequiredParameters) {
+          val extractor = SafeParameterExtractor(ujson.Obj())
+          enhancedHandler(extractor) match {
+            case Right(result) => Right(writeJs(result))
+            case Left(errors)  => Left(ToolCallError.InvalidArguments(name, errors))
+          }
+        } else {
+          Left(ToolCallError.NullArguments(name))
+        }
       case _ =>
         val extractor = SafeParameterExtractor(args)
         enhancedHandler(extractor) match {

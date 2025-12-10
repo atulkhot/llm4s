@@ -35,7 +35,14 @@ class EnhancedLangfuseTracing(
       return Right(())
     }
 
-    logger.debug(s"[Langfuse] Sending batch to URL: $langfuseUrl")
+    // Ensure URL includes the API ingestion endpoint
+    val apiUrl = if (langfuseUrl.endsWith("/api/public/ingestion")) {
+      langfuseUrl
+    } else {
+      langfuseUrl.stripSuffix("/") + "/api/public/ingestion"
+    }
+
+    logger.debug(s"[Langfuse] Sending batch to URL: $apiUrl")
     logger.debug(s"[Langfuse] Using public key: ${publicKey.take(10)}...")
     logger.debug(s"[Langfuse] Events in batch: ${events.length}")
 
@@ -43,7 +50,7 @@ class EnhancedLangfuseTracing(
 
     val attempt = Try {
       val response = requests.post(
-        langfuseUrl,
+        apiUrl,
         data = batchPayload.render(),
         headers = Map(
           "Content-Type" -> "application/json",
