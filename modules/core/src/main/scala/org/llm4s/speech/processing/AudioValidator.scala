@@ -2,7 +2,7 @@ package org.llm4s.speech.processing
 
 import cats.Semigroup
 import cats.data.ValidatedNel
-import cats.implicits.{catsSyntaxEither, catsSyntaxTuple2Semigroupal, catsSyntaxTuple4Semigroupal}
+import cats.implicits.{ catsSyntaxEither, catsSyntaxTuple2Semigroupal, catsSyntaxTuple4Semigroupal }
 import org.llm4s.error.ProcessingError
 import org.llm4s.speech.AudioMeta
 import org.llm4s.speech.processing.AudioValidations._
