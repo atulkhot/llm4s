@@ -1,8 +1,8 @@
 package org.llm4s.speech.processing
 
-import cats.Monoid
+import cats.Semigroup
 import cats.data.ValidatedNel
-import cats.implicits.{ catsSyntaxEither, catsSyntaxTuple2Semigroupal, catsSyntaxTuple4Semigroupal, toFoldableOps }
+import cats.implicits.{catsSyntaxEither, catsSyntaxTuple2Semigroupal, catsSyntaxTuple4Semigroupal}
 import org.llm4s.error.ProcessingError
 import org.llm4s.speech.AudioMeta
 import org.llm4s.speech.processing.AudioValidations._
@@ -22,11 +22,8 @@ trait AudioValidator[+A] {
  * Audio validation implementations
  */
 object AudioValidator {
-  implicit val p: Monoid[ProcessingError] = new Monoid[ProcessingError] {
-    def empty: ProcessingError = ProcessingError.audioValidation("No errors")
-    def combine(x: ProcessingError, y: ProcessingError): ProcessingError =
-      ProcessingError.audioValidation(s"${x.message}, ${y.message}")
-  }
+  implicit val errorSemigroup: Semigroup[ProcessingError] = (x, y) =>
+    ProcessingError.audioValidation(s"${x.message}, ${y.message}")
 
   /**
    * Validates audio metadata for STT processing
@@ -63,7 +60,7 @@ object AudioValidator {
     }
 
     private def validateData(input: (Array[Byte], AudioMeta)): Result[(Array[Byte], AudioMeta)] =
-      validateFrameSize(input).toEither.leftMap(_.combineAll)
+      validateFrameSize(input).toEither.leftMap(_.reduce)
 
     def name: String = "audio-data-validator"
   }
@@ -78,7 +75,7 @@ object AudioValidator {
     }
 
     private def validateNonEmpty(input: (Array[Byte], AudioMeta)): Result[(Array[Byte], AudioMeta)] =
-      validateInputNotEmpty(input).toEither.leftMap(_.combineAll)
+      validateInputNotEmpty(input).toEither.leftMap(_.reduce)
 
     def name: String = "non-empty-audio-validator"
   }
@@ -129,5 +126,5 @@ object AudioValidator {
     (
       validateInputNotEmpty(input),
       validateFrameSize(input)
-    ).mapN((_, validated) => validated).toEither.left.map(_.combineAll)
+    ).mapN((_, validated) => validated).toEither.left.map(_.reduce)
 }
